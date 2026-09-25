@@ -24,7 +24,6 @@ jobs:
           cp fixes/SpaceTransitionHandler.java src/main/java/com/simplespace/event/
           cp fixes/space.json src/main/resources/data/simplespace/dimension_type/
 
-          # Night stars (OVERWORLD sky + fixed midnight time), NOT End sky
           cat > src/main/java/com/simplespace/client/SpaceDimensionEffects.java << 'EOF'
           package com.simplespace.client;
 
@@ -34,8 +33,8 @@ jobs:
           public class SpaceDimensionEffects extends DimensionSpecialEffects {
 
               public SpaceDimensionEffects() {
-                  // OVERWORLD sky = normal night stars when time is midnight
-                  super(Float.NaN, false, SkyType.OVERWORLD, false, false);
+                  // NORMAL sky = night stars at fixed midnight (not End)
+                  super(Float.NaN, false, SkyType.NORMAL, false, false);
               }
 
               @Override
@@ -50,7 +49,6 @@ jobs:
           }
           EOF
 
-          # Renderer: solid for all (emissive broke on mobile), fullbright + better sphere
           cat > src/main/java/com/simplespace/client/CelestialBodyRenderer.java << 'EOF'
           package com.simplespace.client;
 
@@ -217,7 +215,6 @@ jobs:
           }
           EOF
 
-          # Bigger Earth / Sun sizes
           cat > src/main/java/com/simplespace/entity/ModEntities.java << 'EOF'
           package com.simplespace.entity;
 
