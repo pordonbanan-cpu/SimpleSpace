@@ -18,8 +18,12 @@ jobs:
           fi
           chmod +x gradlew || true
 
-      - name: Fix SpaceDimensionEffects for 1.21.1
+      - name: Apply fixes
         run: |
+          cp fixes/SpaceTransitionHandler.java src/main/java/com/simplespace/event/
+          cp fixes/SpacePlanetSpawner.java src/main/java/com/simplespace/event/
+          cp fixes/space.json src/main/resources/data/simplespace/dimension_type/
+          # SpaceDimensionEffects constructor fix
           cat > src/main/java/com/simplespace/client/SpaceDimensionEffects.java << 'EOF'
           package com.simplespace.client;
 
@@ -43,33 +47,168 @@ jobs:
               }
           }
           EOF
+          # Fullbright planet renderer
+          cat > src/main/java/com/simplespace/client/CelestialBodyRenderer.java << 'EOF'
+          package com.simplespace.client;
 
-      - name: Fix dimension_type JSON
-        run: |
-          cat > src/main/resources/data/simplespace/dimension_type/space.json << 'EOF'
-          {
-            "ultrawarm": false,
-            "natural": false,
-            "coordinate_scale": 1.0,
-            "has_skylight": true,
-            "has_ceiling": false,
-            "ambient_light": 0.0,
-            "fixed_time": 18000,
-            "monster_spawn_light_level": {
-              "type": "minecraft:uniform",
-              "min_inclusive": 0,
-              "max_inclusive": 7
-            },
-            "monster_spawn_block_light_limit": 0,
-            "piglin_safe": false,
-            "bed_works": false,
-            "respawn_anchor_works": false,
-            "has_raids": false,
-            "logical_height": 384,
-            "min_y": -64,
-            "height": 384,
-            "infiniburn": "#minecraft:infiniburn_overworld",
-            "effects": "simplespace:space"
+          import com.mojang.blaze3d.vertex.PoseStack;
+          import com.mojang.blaze3d.vertex.VertexConsumer;
+          import com.simplespace.entity.CelestialBodyEntity;
+          import net.minecraft.client.renderer.MultiBufferSource;
+          import net.minecraft.client.renderer.RenderType;
+          import net.minecraft.client.renderer.entity.EntityRenderer;
+          import net.minecraft.client.renderer.entity.EntityRendererProvider;
+          import net.minecraft.client.renderer.texture.OverlayTexture;
+          import net.minecraft.resources.ResourceLocation;
+          import net.minecraft.util.Mth;
+          import org.joml.Matrix4f;
+
+          public class CelestialBodyRenderer extends EntityRenderer<CelestialBodyEntity> {
+
+              private static final ResourceLocation SUN_TEXTURE =
+                      ResourceLocation.fromNamespaceAndPath("simplespace", "textures/entity/sun.png");
+              private static final ResourceLocation EARTH_TEXTURE =
+                      ResourceLocation.fromNamespaceAndPath("simplespace", "textures/entity/earth.png");
+              private static final ResourceLocation MOON_TEXTURE =
+                      ResourceLocation.fromNamespaceAndPath("simplespace", "textures/entity/moon.png");
+
+              private final int segments = 16;
+
+              public CelestialBodyRenderer(EntityRendererProvider.Context context) {
+                  super(context);
+                  this.shadowRadius = 0;
+              }
+
+              @Override
+              public ResourceLocation getTextureLocation(CelestialBodyEntity entity) {
+                  String name = entity.getType().toShortString();
+                  if (name.contains("sun")) return SUN_TEXTURE;
+                  if (name.contains("earth")) return EARTH_TEXTURE;
+                  return MOON_TEXTURE;
+              }
+
+              @Override
+              public void render(CelestialBodyEntity entity, float entityYaw, float partialTicks,
+                                 PoseStack poseStack, MultiBufferSource buffer, int packedLight) {
+                  poseStack.pushPose();
+                  float scale = entity.getBbWidth() * 0.5f;
+                  poseStack.scale(scale, scale, scale);
+                  ResourceLocation texture = getTextureLocation(entity);
+                  VertexConsumer consumer = buffer.getBuffer(RenderType.entitySolid(texture));
+                  int fullBright = 0xF000F0;
+                  Matrix4f matrix = poseStack.last().pose();
+                  for (int i = 0; i < segments; i++) {
+                      float lat0 = (float) Math.PI * (-0.5f + (float) i / segments);
+                      float lat1 = (float) Math.PI * (-0.5f + (float) (i + 1) / segments);
+                      float y0 = Mth.sin(lat0);
+                      float y1 = Mth.sin(lat1);
+                      float r0 = Mth.cos(lat0);
+                      float r1 = Mth.cos(lat1);
+                      for (int j = 0; j < segments; j++) {
+                          float lng0 = 2f * (float) Math.PI * (float) j / segments;
+                          float lng1 = 2f * (float) Math.PI * (float) (j + 1) / segments;
+                          float x00 = r0 * Mth.cos(lng0);
+                          float z00 = r0 * Mth.sin(lng0);
+                          float x01 = r0 * Mth.cos(lng1);
+                          float z01 = r0 * Mth.sin(lng1);
+                          float x10 = r1 * Mth.cos(lng0);
+                          float z10 = r1 * Mth.sin(lng0);
+                          float x11 = r1 * Mth.cos(lng1);
+                          float z11 = r1 * Mth.sin(lng1);
+                          float u0 = (float) j / segments;
+                          float u1 = (float) (j + 1) / segments;
+                          float v0 = (float) i / segments;
+                          float v1 = (float) (i + 1) / segments;
+                          vertex(consumer, matrix, x00, y0, z00, u0, v0, fullBright);
+                          vertex(consumer, matrix, x10, y1, z10, u0, v1, fullBright);
+                          vertex(consumer, matrix, x11, y1, z11, u1, v1, fullBright);
+                          vertex(consumer, matrix, x00, y0, z00, u0, v0, fullBright);
+                          vertex(consumer, matrix, x11, y1, z11, u1, v1, fullBright);
+                          vertex(consumer, matrix, x01, y0, z01, u1, v0, fullBright);
+                      }
+                  }
+                  poseStack.popPose();
+                  super.render(entity, entityYaw, partialTicks, poseStack, buffer, packedLight);
+              }
+
+              private void vertex(VertexConsumer consumer, Matrix4f matrix,
+                                  float x, float y, float z, float u, float v, int light) {
+                  consumer.addVertex(matrix, x, y, z)
+                          .setColor(255, 255, 255, 255)
+                          .setUv(u, v)
+                          .setOverlay(OverlayTexture.NO_OVERLAY)
+                          .setLight(light)
+                          .setNormal(0, 1, 0);
+              }
+          }
+          EOF
+          cat > src/main/java/com/simplespace/command/SpaceCommands.java << 'EOF'
+          package com.simplespace.command;
+
+          import com.mojang.brigadier.CommandDispatcher;
+          import com.simplespace.dimension.ModDimensions;
+          import com.simplespace.event.SpacePlanetSpawner;
+          import com.simplespace.event.SpaceTransitionHandler;
+          import net.minecraft.commands.CommandSourceStack;
+          import net.minecraft.commands.Commands;
+          import net.minecraft.network.chat.Component;
+          import net.minecraft.server.level.ServerLevel;
+          import net.minecraft.server.level.ServerPlayer;
+          import net.minecraft.world.level.Level;
+
+          public class SpaceCommands {
+
+              public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
+                  dispatcher.register(Commands.literal("space")
+                      .requires(source -> source.hasPermission(0))
+                      .executes(context -> {
+                          ServerPlayer player = context.getSource().getPlayerOrException();
+                          ServerLevel space = player.server.getLevel(ModDimensions.SPACE_LEVEL);
+                          if (space != null) {
+                              player.teleportTo(space,
+                                      SpaceTransitionHandler.SPACE_SPAWN_X,
+                                      SpaceTransitionHandler.SPACE_SPAWN_Y,
+                                      SpaceTransitionHandler.SPACE_SPAWN_Z,
+                                      player.getYRot(), player.getXRot());
+                              SpacePlanetSpawner.ensurePlanets(space);
+                              context.getSource().sendSuccess(() -> Component.literal("§bПереход в космос"), false);
+                              return 1;
+                          }
+                          context.getSource().sendFailure(Component.literal("Измерение космоса не найдено"));
+                          return 0;
+                      })
+                  );
+
+                  dispatcher.register(Commands.literal("overworld")
+                      .requires(source -> source.hasPermission(0))
+                      .executes(context -> {
+                          ServerPlayer player = context.getSource().getPlayerOrException();
+                          ServerLevel overworld = player.server.getLevel(Level.OVERWORLD);
+                          if (overworld != null) {
+                              player.teleportTo(overworld, player.getX(), 120, player.getZ(),
+                                      player.getYRot(), player.getXRot());
+                              context.getSource().sendSuccess(() -> Component.literal("§aВозврат в обычный мир"), false);
+                              return 1;
+                          }
+                          return 0;
+                      })
+                  );
+
+                  dispatcher.register(Commands.literal("spawnplanets")
+                      .requires(source -> source.hasPermission(0))
+                      .executes(context -> {
+                          ServerPlayer player = context.getSource().getPlayerOrException();
+                          if (player.level() instanceof ServerLevel level
+                                  && level.dimension() == ModDimensions.SPACE_LEVEL) {
+                              SpacePlanetSpawner.forceRespawn(level);
+                              context.getSource().sendSuccess(() -> Component.literal("§eПланеты заспавнены"), false);
+                              return 1;
+                          }
+                          context.getSource().sendFailure(Component.literal("Нужно быть в космосе"));
+                          return 0;
+                      })
+                  );
+              }
           }
           EOF
 
@@ -86,6 +225,4 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: simplespace-mod
-          path: |
-            build/libs/*.jar
-            SimpleSpace/build/libs/*.jar
+          path: build/libs/*.jar
