@@ -12,13 +12,38 @@ jobs:
       - name: Unpack sources
         run: |
           unzip -o "SimpleSpace-mod-source (1).zip"
-          # если папка внутри называется SimpleSpace — переносим файлы наверх
           if [ -d SimpleSpace ]; then
             cp -r SimpleSpace/* .
             cp -r SimpleSpace/.[!.]* . 2>/dev/null || true
           fi
-          ls -la
           chmod +x gradlew || true
+
+      - name: Fix SpaceDimensionEffects for 1.21.1
+        run: |
+          cat > src/main/java/com/simplespace/client/SpaceDimensionEffects.java << 'EOF'
+          package com.simplespace.client;
+
+          import net.minecraft.client.renderer.DimensionSpecialEffects;
+          import net.minecraft.world.phys.Vec3;
+
+          public class SpaceDimensionEffects extends DimensionSpecialEffects {
+
+              public SpaceDimensionEffects() {
+                  // cloudLevel, hasGround, skyType, forceBrightLightmap, constantAmbientLight
+                  super(Float.NaN, false, SkyType.NONE, false, false);
+              }
+
+              @Override
+              public Vec3 getBrightnessDependentFogColor(Vec3 fogColor, float brightness) {
+                  return new Vec3(0.0, 0.0, 0.0);
+              }
+
+              @Override
+              public boolean isFoggyAt(int x, int y) {
+                  return false;
+              }
+          }
+          EOF
 
       - uses: actions/setup-java@v4
         with:
