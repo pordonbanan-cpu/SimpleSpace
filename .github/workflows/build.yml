@@ -1,0 +1,38 @@
+name: Build Mod
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Unpack sources
+        run: |
+          unzip -o "SimpleSpace-mod-source (1).zip"
+          # если папка внутри называется SimpleSpace — переносим файлы наверх
+          if [ -d SimpleSpace ]; then
+            cp -r SimpleSpace/* .
+            cp -r SimpleSpace/.[!.]* . 2>/dev/null || true
+          fi
+          ls -la
+          chmod +x gradlew || true
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Build
+        run: |
+          chmod +x gradlew
+          ./gradlew build --no-daemon
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: simplespace-mod
+          path: |
+            build/libs/*.jar
+            SimpleSpace/build/libs/*.jar
