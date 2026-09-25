@@ -14,8 +14,8 @@ public class SpaceTransitionHandler {
     public static final int RETURN_HEIGHT = 0;
 
     public static final double SPACE_SPAWN_X = 0.0;
-    public static final double SPACE_SPAWN_Y = 100.0;
-    public static final double SPACE_SPAWN_Z = 0.0;
+    public static final double SPACE_SPAWN_Y = 120.0;
+    public static final double SPACE_SPAWN_Z = 80.0;
 
     @SubscribeEvent
     public void onPlayerTick(PlayerTickEvent.Post event) {
@@ -28,8 +28,7 @@ public class SpaceTransitionHandler {
             if (player.getY() >= SPACE_HEIGHT) {
                 ServerLevel spaceLevel = player.server.getLevel(ModDimensions.SPACE_LEVEL);
                 if (spaceLevel != null) {
-                    player.teleportTo(spaceLevel, SPACE_SPAWN_X, SPACE_SPAWN_Y, SPACE_SPAWN_Z,
-                            player.getYRot(), player.getXRot());
+                    player.teleportTo(spaceLevel, SPACE_SPAWN_X, SPACE_SPAWN_Y, SPACE_SPAWN_Z, 180f, 20f);
                     SpacePlanetSpawner.ensurePlanets(spaceLevel);
                     SimpleSpace.LOGGER.info("Player {} entered space", player.getName().getString());
                 }
@@ -38,8 +37,7 @@ public class SpaceTransitionHandler {
             if (player.getY() < RETURN_HEIGHT) {
                 ServerLevel overworld = player.server.getLevel(Level.OVERWORLD);
                 if (overworld != null) {
-                    double returnY = SPACE_HEIGHT - 50;
-                    player.teleportTo(overworld, player.getX(), returnY, player.getZ(),
+                    player.teleportTo(overworld, player.getX(), SPACE_HEIGHT - 50, player.getZ(),
                             player.getYRot(), player.getXRot());
                     SimpleSpace.LOGGER.info("Player {} returned from space", player.getName().getString());
                 }

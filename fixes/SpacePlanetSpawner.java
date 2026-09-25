@@ -5,6 +5,7 @@ import com.simplespace.dimension.ModDimensions;
 import com.simplespace.entity.CelestialBodyEntity;
 import com.simplespace.entity.ModEntities;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
@@ -15,13 +16,25 @@ public class SpacePlanetSpawner {
 
     public static void ensurePlanets(ServerLevel spaceLevel) {
         if (planetsSpawned) return;
-
-        spawnPlanet(spaceLevel, ModEntities.SUN.get(), 0, 140, 60);
-        spawnPlanet(spaceLevel, ModEntities.EARTH.get(), -50, 90, -40);
-        spawnPlanet(spaceLevel, ModEntities.MOON.get(), -65, 85, -55);
-
+        spawnAll(spaceLevel);
         planetsSpawned = true;
-        SimpleSpace.LOGGER.info("Spawned celestial bodies near space spawn");
+    }
+
+    public static void forceRespawn(ServerLevel spaceLevel) {
+        for (Entity e : spaceLevel.getAllEntities()) {
+            if (e instanceof CelestialBodyEntity) {
+                e.discard();
+            }
+        }
+        planetsSpawned = false;
+        ensurePlanets(spaceLevel);
+    }
+
+    private static void spawnAll(ServerLevel level) {
+        spawnPlanet(level, ModEntities.EARTH.get(), 0, 40, 0);
+        spawnPlanet(level, ModEntities.MOON.get(), -180, 60, -120);
+        spawnPlanet(level, ModEntities.SUN.get(), 400, 120, 500);
+        SimpleSpace.LOGGER.info("Spawned celestial bodies (Earth origin, Sun far)");
     }
 
     @SubscribeEvent
@@ -40,10 +53,5 @@ public class SpacePlanetSpawner {
             planet.setInvulnerable(true);
             level.addFreshEntity(planet);
         }
-    }
-
-    public static void forceRespawn(ServerLevel spaceLevel) {
-        planetsSpawned = false;
-        ensurePlanets(spaceLevel);
     }
 }
