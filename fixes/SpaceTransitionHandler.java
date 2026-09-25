@@ -13,9 +13,10 @@ public class SpaceTransitionHandler {
     public static final int SPACE_HEIGHT = 10000;
     public static final int RETURN_HEIGHT = 0;
 
+    // Above Earth
     public static final double SPACE_SPAWN_X = 0.0;
-    public static final double SPACE_SPAWN_Y = 120.0;
-    public static final double SPACE_SPAWN_Z = 80.0;
+    public static final double SPACE_SPAWN_Y = 130.0;
+    public static final double SPACE_SPAWN_Z = 90.0;
 
     @SubscribeEvent
     public void onPlayerTick(PlayerTickEvent.Post event) {
@@ -28,7 +29,7 @@ public class SpaceTransitionHandler {
             if (player.getY() >= SPACE_HEIGHT) {
                 ServerLevel spaceLevel = player.server.getLevel(ModDimensions.SPACE_LEVEL);
                 if (spaceLevel != null) {
-                    player.teleportTo(spaceLevel, SPACE_SPAWN_X, SPACE_SPAWN_Y, SPACE_SPAWN_Z, 180f, 20f);
+                    player.teleportTo(spaceLevel, SPACE_SPAWN_X, SPACE_SPAWN_Y, SPACE_SPAWN_Z, 180f, 25f);
                     SpacePlanetSpawner.ensurePlanets(spaceLevel);
                     SimpleSpace.LOGGER.info("Player {} entered space", player.getName().getString());
                 }

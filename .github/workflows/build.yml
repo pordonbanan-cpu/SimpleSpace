@@ -18,11 +18,13 @@ jobs:
           fi
           chmod +x gradlew || true
 
-      - name: Apply code fixes
+      - name: Apply fixes
         run: |
           cp fixes/SpacePlanetSpawner.java src/main/java/com/simplespace/event/
           cp fixes/SpaceTransitionHandler.java src/main/java/com/simplespace/event/
+          cp fixes/space.json src/main/resources/data/simplespace/dimension_type/
 
+          # Night stars (OVERWORLD sky + fixed midnight time), NOT End sky
           cat > src/main/java/com/simplespace/client/SpaceDimensionEffects.java << 'EOF'
           package com.simplespace.client;
 
@@ -32,7 +34,8 @@ jobs:
           public class SpaceDimensionEffects extends DimensionSpecialEffects {
 
               public SpaceDimensionEffects() {
-                  super(Float.NaN, false, SkyType.END, false, false);
+                  // OVERWORLD sky = normal night stars when time is midnight
+                  super(Float.NaN, false, SkyType.OVERWORLD, false, false);
               }
 
               @Override
@@ -47,6 +50,7 @@ jobs:
           }
           EOF
 
+          # Renderer: solid for all (emissive broke on mobile), fullbright + better sphere
           cat > src/main/java/com/simplespace/client/CelestialBodyRenderer.java << 'EOF'
           package com.simplespace.client;
 
@@ -87,10 +91,6 @@ jobs:
                   return MOON;
               }
 
-              private boolean isSun(CelestialBodyEntity entity) {
-                  return entity.getType().toShortString().contains("sun");
-              }
-
               @Override
               public void render(CelestialBodyEntity entity, float yaw, float pt,
                                  PoseStack pose, MultiBufferSource buffers, int light) {
@@ -98,11 +98,7 @@ jobs:
                   float radius = entity.getBbWidth() * 0.5f;
                   pose.scale(radius, radius, radius);
                   ResourceLocation tex = getTextureLocation(entity);
-                  boolean sun = isSun(entity);
-                  RenderType type = sun
-                          ? RenderType.entityTranslucentEmissive(tex)
-                          : RenderType.entitySolid(tex);
-                  VertexConsumer vc = buffers.getBuffer(type);
+                  VertexConsumer vc = buffers.getBuffer(RenderType.entitySolid(tex));
                   int packedLight = 0xF000F0;
                   Matrix4f mat = pose.last().pose();
                   for (int i = 0; i < RINGS; i++) {
@@ -178,7 +174,7 @@ jobs:
                                       SpaceTransitionHandler.SPACE_SPAWN_X,
                                       SpaceTransitionHandler.SPACE_SPAWN_Y,
                                       SpaceTransitionHandler.SPACE_SPAWN_Z,
-                                      180f, 20f);
+                                      180f, 25f);
                               SpacePlanetSpawner.ensurePlanets(space);
                               context.getSource().sendSuccess(() -> Component.literal("§bПереход в космос"), false);
                               return 1;
@@ -221,7 +217,54 @@ jobs:
           }
           EOF
 
-      - name: Generate better textures
+          # Bigger Earth / Sun sizes
+          cat > src/main/java/com/simplespace/entity/ModEntities.java << 'EOF'
+          package com.simplespace.entity;
+
+          import com.simplespace.SimpleSpace;
+          import net.minecraft.core.registries.Registries;
+          import net.minecraft.world.entity.EntityType;
+          import net.minecraft.world.entity.MobCategory;
+          import net.neoforged.bus.api.IEventBus;
+          import net.neoforged.neoforge.registries.DeferredRegister;
+          import net.neoforged.neoforge.registries.DeferredHolder;
+
+          public class ModEntities {
+
+              public static final DeferredRegister<EntityType<?>> ENTITIES =
+                      DeferredRegister.create(Registries.ENTITY_TYPE, SimpleSpace.MOD_ID);
+
+              public static final DeferredHolder<EntityType<?>, EntityType<CelestialBodyEntity>> SUN =
+                      ENTITIES.register("sun", () -> EntityType.Builder
+                              .<CelestialBodyEntity>of(CelestialBodyEntity::new, MobCategory.MISC)
+                              .sized(80.0f, 80.0f)
+                              .clientTrackingRange(512)
+                              .updateInterval(Integer.MAX_VALUE)
+                              .build("sun"));
+
+              public static final DeferredHolder<EntityType<?>, EntityType<CelestialBodyEntity>> EARTH =
+                      ENTITIES.register("earth", () -> EntityType.Builder
+                              .<CelestialBodyEntity>of(CelestialBodyEntity::new, MobCategory.MISC)
+                              .sized(24.0f, 24.0f)
+                              .clientTrackingRange(256)
+                              .updateInterval(Integer.MAX_VALUE)
+                              .build("earth"));
+
+              public static final DeferredHolder<EntityType<?>, EntityType<CelestialBodyEntity>> MOON =
+                      ENTITIES.register("moon", () -> EntityType.Builder
+                              .<CelestialBodyEntity>of(CelestialBodyEntity::new, MobCategory.MISC)
+                              .sized(8.0f, 8.0f)
+                              .clientTrackingRange(256)
+                              .updateInterval(Integer.MAX_VALUE)
+                              .build("moon"));
+
+              public static void register(IEventBus bus) {
+                  ENTITIES.register(bus);
+              }
+          }
+          EOF
+
+      - name: Generate textures
         run: |
           python3 << 'PY'
           from pathlib import Path
@@ -245,34 +288,28 @@ jobs:
 
           def sun(x,y,w,h):
               u,v = x/w, y/h
-              dx, dy = u-0.5, v-0.5
-              d = math.sqrt(dx*dx+dy*dy)*2
+              d = math.sqrt((u-0.5)**2+(v-0.5)**2)*2
               heat = max(0, 1-d*0.7)
-              r = 255
-              g = int(180 + 60*heat)
-              b = int(40 + 40*heat)
               n = ((x*17+y*31)&15)
-              return min(255,r+n), min(255,g+n//2), b, 255
+              return min(255,255+n), min(255,int(180+60*heat)+n//2), int(40+40*heat), 255
 
           def earth(x,y,w,h):
-              u,v = x/w, y/h
+              v = y/h
               hsh = ((x*13) ^ (y*7) ^ ((x//8)*(y//8)*19)) & 255
-              if v < 0.12 or v > 0.88:
-                  return 240,240,250,255
-              if hsh > 140:
-                  return 40+hsh//8, 100+hsh//6, 40, 255
+              if v < 0.12 or v > 0.88: return 240,240,250,255
+              if hsh > 140: return 40+hsh//8, 100+hsh//6, 40, 255
               return 20, 60+hsh//10, 160+hsh//8, 255
 
           def moon(x,y,w,h):
               hsh = ((x*11) ^ (y*13) ^ ((x//6)*(y//6)*23)) & 255
               base = 140 + (hsh % 40)
-              crater = 80 if hsh > 230 else base
-              return crater, crater, crater+10, 255
+              c = 80 if hsh > 230 else base
+              return c, c, c+10, 255
 
           write_png(out/'sun.png', 64, 64, sun)
           write_png(out/'earth.png', 64, 64, earth)
           write_png(out/'moon.png', 64, 64, moon)
-          print('textures generated')
+          print('ok')
           PY
 
       - uses: actions/setup-java@v4

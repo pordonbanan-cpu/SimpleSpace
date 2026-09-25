@@ -31,10 +31,13 @@ public class SpacePlanetSpawner {
     }
 
     private static void spawnAll(ServerLevel level) {
+        // Earth at origin
         spawnPlanet(level, ModEntities.EARTH.get(), 0, 40, 0);
-        spawnPlanet(level, ModEntities.MOON.get(), -180, 60, -120);
-        spawnPlanet(level, ModEntities.SUN.get(), 400, 120, 500);
-        SimpleSpace.LOGGER.info("Spawned celestial bodies (Earth origin, Sun far)");
+        // Moon ~60 Earth-radii scaled (~400 blocks)
+        spawnPlanet(level, ModEntities.MOON.get(), -320, 50, -200);
+        // Sun far away (~2000 blocks)
+        spawnPlanet(level, ModEntities.SUN.get(), 1800, 200, 1200);
+        SimpleSpace.LOGGER.info("Spawned planets with scaled solar-system distances");
     }
 
     @SubscribeEvent
