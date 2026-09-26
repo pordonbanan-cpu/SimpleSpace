@@ -127,14 +127,21 @@ jobs:
           write_png(out/'earth.png', SIZE, SIZE, earth)
           write_png(out/'moon.png', SIZE, SIZE, moon)
 
-          # TARS: gray metal body only (no gold stripe). UV [0,0] for segments, cyan sensor [0,14]
+          # Dark metal TARS + blue sensor tiles (UV 0,0 body; 32,0 sensors)
           def tars(x, y, w, h):
-              hsh = ((x * 13) ^ (y * 7)) & 31
-              shade = 118 + hsh
-              r, g, b = shade, shade, min(255, shade + 4)
-              # cyan sensor at uv 0,14
-              if 0 <= x < 6 and 14 <= y < 20:
-                  r, g, b = 40, 200, 255
+              # panel grid
+              gx, gy = x // 4, y // 4
+              hsh = ((gx * 17) ^ (gy * 11)) & 15
+              base = 35 + hsh
+              r, g, b = base, base + 1, base + 3
+              # lighter edge lines
+              if x % 8 == 0 or y % 8 == 0:
+                  r, g, b = min(255, r + 18), min(255, g + 18), min(255, b + 20)
+              # blue LED region for sensor UV ~32,0
+              if 32 <= x < 48 and 0 <= y < 12:
+                  r, g, b = 20, 120, 220
+                  if (x + y) % 3 == 0:
+                      r, g, b = 40, 180, 255
               return r, g, b, 255
 
           write_png(out/'tars.png', SIZE, SIZE, tars)
