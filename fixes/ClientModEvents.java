@@ -17,8 +17,8 @@ public class ClientModEvents {
         event.registerEntityRenderer(ModEntities.SUN.get(), CelestialBodyRenderer::new);
         event.registerEntityRenderer(ModEntities.EARTH.get(), CelestialBodyRenderer::new);
         event.registerEntityRenderer(ModEntities.MOON.get(), CelestialBodyRenderer::new);
-        event.registerEntityRenderer(ModEntities.TARS.get(), TarsRenderer::new);
-        SimpleSpace.LOGGER.info("Registered renderers (planets + TARS)");
+        event.registerEntityRenderer(ModEntities.TARS.get(), TarsGeoRenderer::new);
+        SimpleSpace.LOGGER.info("Registered renderers (planets + GeckoLib TARS)");
     }
 
     @SubscribeEvent

@@ -1,0 +1,33 @@
+modLoader="javafml"
+loaderVersion="[4,)"
+license="All Rights Reserved"
+
+[[mods]]
+modId="simplespace"
+version="0.1.0"
+displayName="SimpleSpace"
+authors="Grok + User"
+description='''
+Simple space dimension + TARS companion (GeckoLib).
+'''
+
+[[dependencies.simplespace]]
+modId="neoforge"
+type="required"
+versionRange="[21.1,)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.simplespace]]
+modId="minecraft"
+type="required"
+versionRange="[1.21.1,1.22)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.simplespace]]
+modId="geckolib"
+type="required"
+versionRange="[4.6,)"
+ordering="NONE"
+side="BOTH"

@@ -17,10 +17,18 @@ import net.minecraft.world.entity.ai.goal.LookAtPlayerGoal;
 import net.minecraft.world.entity.ai.goal.RandomLookAroundGoal;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
+import software.bernie.geckolib.animatable.GeoEntity;
+import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
+import software.bernie.geckolib.animation.AnimatableManager;
+import software.bernie.geckolib.animation.AnimationController;
+import software.bernie.geckolib.animation.AnimationState;
+import software.bernie.geckolib.animation.PlayState;
+import software.bernie.geckolib.animation.RawAnimation;
+import software.bernie.geckolib.util.GeckoLibUtil;
 
 import java.util.UUID;
 
-public class TarsEntity extends PathfinderMob {
+public class TarsEntity extends PathfinderMob implements GeoEntity {
 
     private static final EntityDataAccessor<Integer> HUMOR =
             SynchedEntityData.defineId(TarsEntity.class, EntityDataSerializers.INT);
@@ -29,7 +37,12 @@ public class TarsEntity extends PathfinderMob {
     private static final EntityDataAccessor<Boolean> SPRINT_MODE =
             SynchedEntityData.defineId(TarsEntity.class, EntityDataSerializers.BOOLEAN);
 
+    private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
     private UUID ownerUUID;
+
+    private static final RawAnimation IDLE = RawAnimation.begin().thenLoop("idle");
+    private static final RawAnimation WALK = RawAnimation.begin().thenLoop("walk");
+    private static final RawAnimation RUN = RawAnimation.begin().thenLoop("run");
 
     public TarsEntity(EntityType<? extends PathfinderMob> type, Level level) {
         super(type, level);
@@ -62,13 +75,10 @@ public class TarsEntity extends PathfinderMob {
 
     public int getHumor() { return this.entityData.get(HUMOR); }
     public void setHumor(int v) { this.entityData.set(HUMOR, Math.max(0, Math.min(100, v))); }
-
     public boolean isFollowing() { return this.entityData.get(FOLLOWING); }
     public void setFollowing(boolean v) { this.entityData.set(FOLLOWING, v); }
-
     public boolean isSprintMode() { return this.entityData.get(SPRINT_MODE); }
     public void setSprintMode(boolean v) { this.entityData.set(SPRINT_MODE, v); }
-
     public UUID getOwnerUUID() { return ownerUUID; }
     public void setOwnerUUID(UUID uuid) { this.ownerUUID = uuid; }
 
@@ -76,9 +86,6 @@ public class TarsEntity extends PathfinderMob {
         if (ownerUUID == null || level().isClientSide()) return null;
         return level().getPlayerByUUID(ownerUUID);
     }
-
-    public float getWalkAnimSpeed() { return this.walkAnimation.speed(); }
-    public float getWalkAnimPos(float partial) { return this.walkAnimation.position(partial); }
 
     public void speak(ServerPlayer to, String line) {
         String prefix = "§8[TARS] §f";
@@ -115,6 +122,27 @@ public class TarsEntity extends PathfinderMob {
             speak(sp, "Юмор " + getHumor() + "%. Shift+ПКМ — панель.");
         }
         return InteractionResult.sidedSuccess(level().isClientSide());
+    }
+
+    @Override
+    public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
+        controllers.add(new AnimationController<>(this, "main", 5, this::predicate));
+    }
+
+    private PlayState predicate(AnimationState<TarsEntity> state) {
+        if (this.isSprintMode()) {
+            state.setAnimation(RUN);
+        } else if (state.isMoving()) {
+            state.setAnimation(WALK);
+        } else {
+            state.setAnimation(IDLE);
+        }
+        return PlayState.CONTINUE;
+    }
+
+    @Override
+    public AnimatableInstanceCache getAnimatableInstanceCache() {
+        return this.cache;
     }
 
     @Override
