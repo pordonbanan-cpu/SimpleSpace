@@ -5,6 +5,8 @@ import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.EntityType;
@@ -16,6 +18,7 @@ import net.minecraft.world.entity.ai.goal.FloatGoal;
 import net.minecraft.world.entity.ai.goal.RandomLookAroundGoal;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.Vec3;
 import software.bernie.geckolib.animatable.GeoEntity;
 import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
 import software.bernie.geckolib.animation.AnimatableManager;
@@ -39,7 +42,10 @@ public class TarsEntity extends PathfinderMob implements GeoEntity {
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
     private UUID ownerUUID;
     private int jokeCooldown;
+    private int walkSoundCooldown;
+    private int rollSoundCooldown;
     private float lockedYRot = Float.NaN;
+    private boolean wasMoving;
 
     private static final RawAnimation IDLE = RawAnimation.begin().thenLoop("idle");
     private static final RawAnimation WALK = RawAnimation.begin().thenLoop("walk");
@@ -82,7 +88,6 @@ public class TarsEntity extends PathfinderMob implements GeoEntity {
     protected void registerGoals() {
         this.goalSelector.addGoal(0, new FloatGoal(this));
         this.goalSelector.addGoal(1, new TarsFollowOwnerGoal(this, 1.25, 1.5f, 2.0f));
-        this.goalSelector.addGoal(2, new TarsLookAtOwnerGoal(this));
         this.goalSelector.addGoal(3, new RandomLookAroundGoal(this) {
             @Override
             public boolean canUse() {
@@ -96,16 +101,32 @@ public class TarsEntity extends PathfinderMob implements GeoEntity {
     public boolean isFollowing() { return this.entityData.get(FOLLOWING); }
 
     public void setFollowing(boolean v) {
+        boolean prev = isFollowing();
         this.entityData.set(FOLLOWING, v);
         if (!v) {
             this.lockedYRot = this.getYRot();
+            if (prev && !level().isClientSide()) {
+                playLocal(SoundEvents.IRON_DOOR_CLOSE, 0.6f, 1.2f);
+            }
         } else {
             this.lockedYRot = Float.NaN;
+            if (!prev && !level().isClientSide()) {
+                playLocal(SoundEvents.IRON_DOOR_OPEN, 0.6f, 1.3f);
+            }
         }
     }
 
     public boolean isSprintMode() { return this.entityData.get(SPRINT_MODE); }
-    public void setSprintMode(boolean v) { this.entityData.set(SPRINT_MODE, v); }
+
+    public void setSprintMode(boolean v) {
+        boolean prev = isSprintMode();
+        this.entityData.set(SPRINT_MODE, v);
+        if (!level().isClientSide() && v != prev) {
+            if (v) playLocal(SoundEvents.PISTON_EXTEND, 0.7f, 0.8f);
+            else playLocal(SoundEvents.PISTON_CONTRACT, 0.7f, 0.9f);
+        }
+    }
+
     public UUID getOwnerUUID() { return ownerUUID; }
     public void setOwnerUUID(UUID uuid) { this.ownerUUID = uuid; }
 
@@ -118,30 +139,84 @@ public class TarsEntity extends PathfinderMob implements GeoEntity {
         to.sendSystemMessage(Component.literal("§8[TARS] §f" + line));
     }
 
+    private void playLocal(net.minecraft.sounds.SoundEvent sound, float vol, float pitch) {
+        level().playSound(null, getX(), getY(), getZ(), sound, SoundSource.NEUTRAL, vol, pitch);
+    }
+
     @Override
     public void tick() {
         super.tick();
-
         if (!level().isClientSide()) {
-            if (isFollowing()) {
-                Player owner = getOwner();
-                if (owner != null && owner.isAlive()) {
-                    this.getLookControl().setLookAt(owner, 40.0f, 40.0f);
-                    double dx = owner.getX() - this.getX();
-                    double dz = owner.getZ() - this.getZ();
-                    float target = (float) (Math.atan2(dz, dx) * (180F / Math.PI)) - 90.0F;
-                    this.setYRot(approachDegrees(this.getYRot(), target, 8.0f));
-                    this.yBodyRot = this.getYRot();
-                    this.yHeadRot = this.getYRot();
-                }
-            } else if (!Float.isNaN(lockedYRot)) {
+            orientBody();
+            tickMovementSounds();
+            tickJokes();
+        }
+    }
+
+    private void orientBody() {
+        if (!isFollowing()) {
+            if (!Float.isNaN(lockedYRot)) {
                 this.setYRot(lockedYRot);
                 this.yBodyRot = lockedYRot;
                 this.yHeadRot = lockedYRot;
             }
+            return;
         }
 
-        if (level().isClientSide()) return;
+        Player owner = getOwner();
+        Vec3 motion = this.getDeltaMovement();
+        double speed2 = motion.x * motion.x + motion.z * motion.z;
+        boolean moving = speed2 > 0.0008 || !this.getNavigation().isDone();
+
+        if (moving) {
+            double mx = motion.x;
+            double mz = motion.z;
+            if (speed2 < 0.0001 && owner != null) {
+                mx = owner.getX() - getX();
+                mz = owner.getZ() - getZ();
+            }
+            if (mx * mx + mz * mz > 1.0E-6) {
+                float target = (float) (Math.atan2(mz, mx) * (180F / Math.PI)) - 90.0F;
+                float maxDelta = isSprintMode() ? 6.0f : 10.0f;
+                float next = approachDegrees(this.getYRot(), target, maxDelta);
+                this.setYRot(next);
+                this.yBodyRot = next;
+                this.yHeadRot = next;
+            }
+        } else if (owner != null && owner.isAlive()) {
+            double dx = owner.getX() - getX();
+            double dz = owner.getZ() - getZ();
+            float target = (float) (Math.atan2(dz, dx) * (180F / Math.PI)) - 90.0F;
+            float next = approachDegrees(this.getYRot(), target, 4.0f);
+            this.setYRot(next);
+            this.yBodyRot = next;
+            this.yHeadRot = next;
+        }
+    }
+
+    private void tickMovementSounds() {
+        Vec3 motion = this.getDeltaMovement();
+        boolean moving = motion.horizontalDistanceSqr() > 0.001 || !this.getNavigation().isDone();
+
+        if (isSprintMode() && moving) {
+            if (--rollSoundCooldown <= 0) {
+                rollSoundCooldown = 8;
+                playLocal(SoundEvents.ELYTRA_FLYING, 0.35f, 0.6f + random.nextFloat() * 0.15f);
+            }
+        } else if (moving && isFollowing()) {
+            if (--walkSoundCooldown <= 0) {
+                walkSoundCooldown = 12 + random.nextInt(4);
+                playLocal(SoundEvents.IRON_GOLEM_STEP, 0.4f, 1.1f + random.nextFloat() * 0.2f);
+            }
+        }
+
+        if (wasMoving && !moving && isSprintMode()) {
+            playLocal(SoundEvents.IRON_GOLEM_DAMAGE, 0.3f, 1.5f);
+        }
+        wasMoving = moving;
+    }
+
+    private void tickJokes() {
         if (getHumor() <= 0) return;
         if (--jokeCooldown > 0) return;
         float chance = getHumor() / 100f;
@@ -150,6 +225,7 @@ public class TarsEntity extends PathfinderMob implements GeoEntity {
         Player owner = getOwner();
         if (owner instanceof ServerPlayer sp && distanceToSqr(sp) < 48 * 48) {
             speak(sp, JOKES[random.nextInt(JOKES.length)]);
+            playLocal(SoundEvents.NOTE_BLOCK_BIT.value(), 0.5f, 0.8f + random.nextFloat() * 0.4f);
         }
     }
 
@@ -190,11 +266,8 @@ public class TarsEntity extends PathfinderMob implements GeoEntity {
 
     private PlayState predicate(AnimationState<TarsEntity> state) {
         if (state.isMoving()) {
-            if (this.isSprintMode()) {
-                state.setAnimation(RUN);
-            } else {
-                state.setAnimation(WALK);
-            }
+            if (this.isSprintMode()) state.setAnimation(RUN);
+            else state.setAnimation(WALK);
         } else {
             state.setAnimation(IDLE);
         }

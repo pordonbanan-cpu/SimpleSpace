@@ -19,7 +19,7 @@ public class TarsFollowOwnerGoal extends Goal {
         this.speed = speed;
         this.stopDistance = stopDistance;
         this.startDistance = startDistance;
-        this.setFlags(EnumSet.of(Flag.MOVE, Flag.LOOK));
+        this.setFlags(EnumSet.of(Flag.MOVE));
     }
 
     @Override
@@ -51,9 +51,8 @@ public class TarsFollowOwnerGoal extends Goal {
     @Override
     public void tick() {
         if (owner == null) return;
-        tars.getLookControl().setLookAt(owner, 30.0f, tars.getMaxHeadXRot());
         if (--timeToRecalcPath <= 0) {
-            timeToRecalcPath = tars.isSprintMode() ? 3 : 5;
+            timeToRecalcPath = tars.isSprintMode() ? 4 : 6;
             double spd = speed;
             if (tars.isSprintMode()) spd = speed * 2.0;
             else if (tars.distanceToSqr(owner) > 64) spd = speed * 1.45;
