@@ -20,7 +20,7 @@ public class TarsRenderer extends EntityRenderer<TarsEntity> {
 
     public TarsRenderer(EntityRendererProvider.Context ctx) {
         super(ctx);
-        this.shadowRadius = 0.5f;
+        this.shadowRadius = 0.45f;
     }
 
     @Override
@@ -35,27 +35,41 @@ public class TarsRenderer extends EntityRenderer<TarsEntity> {
 
         float bodyYaw = Mth.rotLerp(pt, entity.yBodyRotO, entity.yBodyRot);
         pose.mulPose(Axis.YP.rotationDegrees(180.0F - bodyYaw));
-        pose.translate(0, 0.05, 0);
+
+        float walkPos = entity.getWalkAnimPos(pt);
+        float walkSpeed = entity.getWalkAnimSpeed();
+        float swing = Math.min(1f, walkSpeed * 4f);
+        float phase = walkPos * 0.6662f;
+
+        float leftZ = Mth.sin(phase) * 0.22f * swing;
+        float rightZ = Mth.sin(phase + Mth.PI) * 0.22f * swing;
+        float leftY = Math.max(0, Mth.sin(phase)) * 0.08f * swing;
+        float rightY = Math.max(0, Mth.sin(phase + Mth.PI)) * 0.08f * swing;
+        float leftRot = Mth.sin(phase) * 18f * swing;
+        float rightRot = Mth.sin(phase + Mth.PI) * 18f * swing;
+
+        float bob = Mth.sin(phase * 2f) * 0.03f * swing;
+        pose.translate(0, 0.02f + bob, 0);
 
         VertexConsumer vc = buffers.getBuffer(RenderType.entitySolid(WHITE));
 
-        float[][] modules = {
-                {0.85f, 0.45f, 0.35f, 0.00f},
-                {0.90f, 0.50f, 0.38f, 0.48f},
-                {0.88f, 0.48f, 0.36f, 1.00f},
-                {0.70f, 0.40f, 0.32f, 1.50f},
-        };
+        drawBox(pose, vc, 0, 0.35f, 0, 0.72f, 0.55f, 0.40f, 40, 42, 48, light);
+        drawBox(pose, vc, 0, 0.95f, 0, 0.78f, 0.55f, 0.42f, 36, 38, 44, light);
+        drawBox(pose, vc, 0, 1.55f, 0, 0.62f, 0.42f, 0.36f, 32, 34, 40, light);
+        drawBox(pose, vc, 0, 0.70f, -0.22f, 0.10f, 1.15f, 0.04f, 230, 190, 50, light);
+        drawBox(pose, vc, 0.12f, 1.55f, -0.20f, 0.09f, 0.09f, 0.04f, 70, 210, 255, light);
 
-        for (float[] m : modules) {
-            drawBox(pose, vc, 0, m[3] + m[1] / 2f, 0, m[0], m[1], m[2],
-                    35, 38, 42, light);
-        }
+        pose.pushPose();
+        pose.translate(-0.55f, 0.15f + leftY, leftZ);
+        pose.mulPose(Axis.XP.rotationDegrees(leftRot));
+        drawBox(pose, vc, 0, 0.35f, 0, 0.32f, 0.70f, 0.32f, 28, 30, 36, light);
+        pose.popPose();
 
-        drawBox(pose, vc, 0, 0.95f, -0.20f, 0.12f, 1.6f, 0.04f,
-                220, 180, 40, light);
-
-        drawBox(pose, vc, 0.15f, 1.55f, -0.19f, 0.10f, 0.10f, 0.05f,
-                80, 200, 255, light);
+        pose.pushPose();
+        pose.translate(0.55f, 0.15f + rightY, rightZ);
+        pose.mulPose(Axis.XP.rotationDegrees(rightRot));
+        drawBox(pose, vc, 0, 0.35f, 0, 0.32f, 0.70f, 0.32f, 28, 30, 36, light);
+        pose.popPose();
 
         pose.popPose();
         super.render(entity, yaw, pt, pose, buffers, light);
@@ -67,40 +81,49 @@ public class TarsRenderer extends EntityRenderer<TarsEntity> {
                                 int r, int g, int b, int light) {
         pose.pushPose();
         pose.translate(cx, cy, cz);
-        Matrix4f mat = pose.last().pose();
+        Matrix4f m = pose.last().pose();
         float x0 = -w / 2, x1 = w / 2;
         float y0 = -h / 2, y1 = h / 2;
         float z0 = -d / 2, z1 = d / 2;
 
-        quad(vc, mat, x0, y0, z1, x1, y0, z1, x1, y1, z1, x0, y1, z1, r, g, b, light);
-        quad(vc, mat, x1, y0, z0, x0, y0, z0, x0, y1, z0, x1, y1, z0, r, g, b, light);
-        quad(vc, mat, x0, y0, z0, x0, y0, z1, x0, y1, z1, x0, y1, z0, r, g, b, light);
-        quad(vc, mat, x1, y0, z1, x1, y0, z0, x1, y1, z0, x1, y1, z1, r, g, b, light);
-        quad(vc, mat, x0, y1, z1, x1, y1, z1, x1, y1, z0, x0, y1, z0, r, g, b, light);
-        quad(vc, mat, x0, y0, z0, x1, y0, z0, x1, y0, z1, x0, y0, z1, r, g, b, light);
+        v(vc, m, x0, y0, z1, r, g, b, light);
+        v(vc, m, x1, y0, z1, r, g, b, light);
+        v(vc, m, x1, y1, z1, r, g, b, light);
+        v(vc, m, x0, y1, z1, r, g, b, light);
+
+        v(vc, m, x1, y0, z0, r, g, b, light);
+        v(vc, m, x0, y0, z0, r, g, b, light);
+        v(vc, m, x0, y1, z0, r, g, b, light);
+        v(vc, m, x1, y1, z0, r, g, b, light);
+
+        v(vc, m, x0, y0, z0, r, g, b, light);
+        v(vc, m, x0, y0, z1, r, g, b, light);
+        v(vc, m, x0, y1, z1, r, g, b, light);
+        v(vc, m, x0, y1, z0, r, g, b, light);
+
+        v(vc, m, x1, y0, z1, r, g, b, light);
+        v(vc, m, x1, y0, z0, r, g, b, light);
+        v(vc, m, x1, y1, z0, r, g, b, light);
+        v(vc, m, x1, y1, z1, r, g, b, light);
+
+        v(vc, m, x0, y1, z1, r, g, b, light);
+        v(vc, m, x1, y1, z1, r, g, b, light);
+        v(vc, m, x1, y1, z0, r, g, b, light);
+        v(vc, m, x0, y1, z0, r, g, b, light);
+
+        v(vc, m, x0, y0, z0, r, g, b, light);
+        v(vc, m, x1, y0, z0, r, g, b, light);
+        v(vc, m, x1, y0, z1, r, g, b, light);
+        v(vc, m, x0, y0, z1, r, g, b, light);
 
         pose.popPose();
     }
 
-    private static void quad(VertexConsumer vc, Matrix4f mat,
-                             float x0, float y0, float z0,
-                             float x1, float y1, float z1,
-                             float x2, float y2, float z2,
-                             float x3, float y3, float z3,
-                             int r, int g, int b, int light) {
-        vert(vc, mat, x0, y0, z0, r, g, b, light);
-        vert(vc, mat, x1, y1, z1, r, g, b, light);
-        vert(vc, mat, x2, y2, z2, r, g, b, light);
-        vert(vc, mat, x0, y0, z0, r, g, b, light);
-        vert(vc, mat, x2, y2, z2, r, g, b, light);
-        vert(vc, mat, x3, y3, z3, r, g, b, light);
-    }
-
-    private static void vert(VertexConsumer vc, Matrix4f mat,
-                             float x, float y, float z, int r, int g, int b, int light) {
-        vc.addVertex(mat, x, y, z)
+    private static void v(VertexConsumer vc, Matrix4f m,
+                          float x, float y, float z, int r, int g, int b, int light) {
+        vc.addVertex(m, x, y, z)
                 .setColor(r, g, b, 255)
-                .setUv(0, 0)
+                .setUv(0f, 0f)
                 .setOverlay(OverlayTexture.NO_OVERLAY)
                 .setLight(light)
                 .setNormal(0, 1, 0);

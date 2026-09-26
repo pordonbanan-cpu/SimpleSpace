@@ -26,16 +26,14 @@ public class TarsFollowOwnerGoal extends Goal {
     public boolean canUse() {
         if (!tars.isFollowing()) return false;
         Player o = tars.getOwner();
-        if (o == null || o.isSpectator()) return false;
-        if (tars.distanceToSqr(o) < (double) (startDistance * startDistance)) return false;
+        if (o == null || o.isSpectator() || !o.isAlive()) return false;
         this.owner = o;
-        return true;
+        return tars.distanceToSqr(o) > (double) (startDistance * startDistance);
     }
 
     @Override
     public boolean canContinueToUse() {
-        if (!tars.isFollowing() || owner == null) return false;
-        if (tars.getNavigation().isDone()) return false;
+        if (!tars.isFollowing() || owner == null || !owner.isAlive()) return false;
         return tars.distanceToSqr(owner) > (double) (stopDistance * stopDistance);
     }
 
@@ -53,10 +51,13 @@ public class TarsFollowOwnerGoal extends Goal {
     @Override
     public void tick() {
         if (owner == null) return;
-        tars.getLookControl().setLookAt(owner, 10.0f, tars.getMaxHeadXRot());
+        tars.getLookControl().setLookAt(owner, 25.0f, tars.getMaxHeadXRot());
         if (--timeToRecalcPath <= 0) {
-            timeToRecalcPath = 10;
-            tars.getNavigation().moveTo(owner, speed);
+            timeToRecalcPath = 5;
+            double distSq = tars.distanceToSqr(owner);
+            double spd = speed;
+            if (distSq > 64) spd = speed * 1.35;
+            tars.getNavigation().moveTo(owner, spd);
         }
     }
 }

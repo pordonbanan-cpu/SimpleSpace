@@ -1,10 +1,16 @@
 package com.simplespace.tars;
 
+import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.HoverEvent;
+import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.chat.Style;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.PathfinderMob;
@@ -34,8 +40,8 @@ public class TarsEntity extends PathfinderMob {
     public static AttributeSupplier.Builder createAttributes() {
         return Mob.createMobAttributes()
                 .add(Attributes.MAX_HEALTH, 40.0)
-                .add(Attributes.MOVEMENT_SPEED, 0.28)
-                .add(Attributes.FOLLOW_RANGE, 48.0)
+                .add(Attributes.MOVEMENT_SPEED, 0.32)
+                .add(Attributes.FOLLOW_RANGE, 64.0)
                 .add(Attributes.KNOCKBACK_RESISTANCE, 0.6)
                 .add(Attributes.ARMOR, 6.0);
     }
@@ -50,7 +56,7 @@ public class TarsEntity extends PathfinderMob {
     @Override
     protected void registerGoals() {
         this.goalSelector.addGoal(0, new FloatGoal(this));
-        this.goalSelector.addGoal(1, new TarsFollowOwnerGoal(this, 1.15, 4.0f, 12.0f));
+        this.goalSelector.addGoal(1, new TarsFollowOwnerGoal(this, 1.25, 1.8f, 2.5f));
         this.goalSelector.addGoal(2, new LookAtPlayerGoal(this, Player.class, 10.0f));
         this.goalSelector.addGoal(3, new RandomLookAroundGoal(this));
     }
@@ -84,6 +90,14 @@ public class TarsEntity extends PathfinderMob {
         return level().getPlayerByUUID(ownerUUID);
     }
 
+    public float getWalkAnimSpeed() {
+        return this.walkAnimation.speed();
+    }
+
+    public float getWalkAnimPos(float partial) {
+        return this.walkAnimation.position(partial);
+    }
+
     public void speak(ServerPlayer to, String baseLine) {
         String prefix = "§8[TARS] §f";
         if (getHumor() >= 70 && random.nextFloat() < getHumor() / 150f) {
@@ -96,6 +110,46 @@ public class TarsEntity extends PathfinderMob {
             to.sendSystemMessage(Component.literal(prefix + jokes[random.nextInt(jokes.length)]));
         }
         to.sendSystemMessage(Component.literal(prefix + baseLine));
+    }
+
+    @Override
+    public InteractionResult mobInteract(Player player, InteractionHand hand) {
+        if (level().isClientSide()) return InteractionResult.SUCCESS;
+        if (!(player instanceof ServerPlayer sp)) return InteractionResult.PASS;
+
+        if (ownerUUID != null && !ownerUUID.equals(player.getUUID())) {
+            sp.sendSystemMessage(Component.literal("§c[TARS] Это не ваш робот."));
+            return InteractionResult.CONSUME;
+        }
+        if (ownerUUID == null) {
+            setOwnerUUID(player.getUUID());
+        }
+
+        if (player.isShiftKeyDown()) {
+            openMenu(sp);
+            return InteractionResult.CONSUME;
+        }
+
+        speak(sp, "Юмор " + getHumor() + "%. "
+                + (isFollowing() ? "Следую за вами." : "Стоя. Shift+ПКМ — меню."));
+        return InteractionResult.CONSUME;
+    }
+
+    private void openMenu(ServerPlayer player) {
+        player.sendSystemMessage(Component.literal("§6§l—— TARS · меню ——"));
+        player.sendSystemMessage(btn("§a▶ За мной", "/tars follow", "Следовать"));
+        player.sendSystemMessage(btn("§e❚❚ Стоять", "/tars stay", "Остановиться"));
+        player.sendSystemMessage(btn("§bЮмор 25%", "/tars humor 25", "Мало шуток"));
+        player.sendSystemMessage(btn("§bЮмор 75%", "/tars humor 75", "Как в фильме"));
+        player.sendSystemMessage(btn("§bЮмор 100%", "/tars humor 100", "Максимум"));
+        player.sendSystemMessage(btn("§7Статус", "/tars status", "Статус"));
+        player.sendSystemMessage(Component.literal("§8Shift+ПКМ по TARS — меню"));
+    }
+
+    private static MutableComponent btn(String label, String command, String hover) {
+        return Component.literal(label).setStyle(Style.EMPTY
+                .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, command))
+                .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Component.literal(hover))));
     }
 
     @Override

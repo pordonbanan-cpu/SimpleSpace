@@ -16,26 +16,32 @@ import java.util.List;
 public class TarsCommands {
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
-        dispatcher.register(Commands.literal("tars")
-                .requires(s -> s.hasPermission(0))
-                .then(Commands.literal("призвать")
-                        .executes(ctx -> spawn(ctx.getSource())))
-                .then(Commands.literal("за_мной")
-                        .executes(ctx -> setFollow(ctx.getSource(), true)))
-                .then(Commands.literal("стой")
-                        .executes(ctx -> setFollow(ctx.getSource(), false)))
-                .then(Commands.literal("юмор")
-                        .then(Commands.argument("уровень", IntegerArgumentType.integer(0, 100))
-                                .executes(ctx -> setHumor(ctx.getSource(),
-                                        IntegerArgumentType.getInteger(ctx, "уровень")))))
-                .then(Commands.literal("статус")
-                        .executes(ctx -> status(ctx.getSource())))
-        );
+        var root = Commands.literal("tars").requires(s -> s.hasPermission(0));
+
+        root.then(Commands.literal("призвать").executes(ctx -> spawn(ctx.getSource())));
+        root.then(Commands.literal("за_мной").executes(ctx -> setFollow(ctx.getSource(), true)));
+        root.then(Commands.literal("стой").executes(ctx -> setFollow(ctx.getSource(), false)));
+        root.then(Commands.literal("юмор")
+                .then(Commands.argument("уровень", IntegerArgumentType.integer(0, 100))
+                        .executes(ctx -> setHumor(ctx.getSource(),
+                                IntegerArgumentType.getInteger(ctx, "уровень")))));
+        root.then(Commands.literal("статус").executes(ctx -> status(ctx.getSource())));
+
+        root.then(Commands.literal("spawn").executes(ctx -> spawn(ctx.getSource())));
+        root.then(Commands.literal("follow").executes(ctx -> setFollow(ctx.getSource(), true)));
+        root.then(Commands.literal("stay").executes(ctx -> setFollow(ctx.getSource(), false)));
+        root.then(Commands.literal("humor")
+                .then(Commands.argument("level", IntegerArgumentType.integer(0, 100))
+                        .executes(ctx -> setHumor(ctx.getSource(),
+                                IntegerArgumentType.getInteger(ctx, "level")))));
+        root.then(Commands.literal("status").executes(ctx -> status(ctx.getSource())));
+
+        dispatcher.register(root);
     }
 
     private static TarsEntity findNearest(ServerPlayer player) {
         ServerLevel level = player.serverLevel();
-        AABB box = player.getBoundingBox().inflate(32);
+        AABB box = player.getBoundingBox().inflate(48);
         List<TarsEntity> list = level.getEntitiesOfClass(TarsEntity.class, box,
                 t -> player.getUUID().equals(t.getOwnerUUID()));
         TarsEntity best = null;
@@ -66,7 +72,7 @@ public class TarsCommands {
             source.sendFailure(Component.literal("Не удалось создать TARS"));
             return 0;
         }
-        tars.moveTo(player.getX() + 1.5, player.getY(), player.getZ() + 1.5,
+        tars.moveTo(player.getX() + 1.2, player.getY(), player.getZ() + 1.2,
                 player.getYRot(), 0);
         tars.setOwnerUUID(player.getUUID());
         tars.setHumor(75);
@@ -74,7 +80,7 @@ public class TarsCommands {
         level.addFreshEntity(tars);
 
         tars.speak(player, "На связи. Юмор 75%. Куда идём?");
-        source.sendSuccess(() -> Component.literal("§aTARS призван"), false);
+        source.sendSuccess(() -> Component.literal("§aTARS призван · Shift+ПКМ — меню"), false);
         return 1;
     }
 
@@ -83,15 +89,11 @@ public class TarsCommands {
         if (player == null) return 0;
         TarsEntity tars = findNearest(player);
         if (tars == null) {
-            source.sendFailure(Component.literal("Рядом нет твоего TARS. /tars призвать"));
+            source.sendFailure(Component.literal("Рядом нет TARS. /tars spawn"));
             return 0;
         }
         tars.setFollowing(follow);
-        if (follow) {
-            tars.speak(player, "Иду за вами.");
-        } else {
-            tars.speak(player, "Стоя на месте. Жду приказа.");
-        }
+        tars.speak(player, follow ? "Иду за вами." : "Стоя на месте.");
         return 1;
     }
 
@@ -100,11 +102,11 @@ public class TarsCommands {
         if (player == null) return 0;
         TarsEntity tars = findNearest(player);
         if (tars == null) {
-            source.sendFailure(Component.literal("Рядом нет твоего TARS. /tars призвать"));
+            source.sendFailure(Component.literal("Рядом нет TARS. /tars spawn"));
             return 0;
         }
         tars.setHumor(level);
-        tars.speak(player, "Уровень юмора установлен: " + level + "%.");
+        tars.speak(player, "Уровень юмора: " + level + "%.");
         return 1;
     }
 
@@ -113,7 +115,7 @@ public class TarsCommands {
         if (player == null) return 0;
         TarsEntity tars = findNearest(player);
         if (tars == null) {
-            source.sendFailure(Component.literal("Рядом нет твоего TARS. /tars призвать"));
+            source.sendFailure(Component.literal("Рядом нет TARS. /tars spawn"));
             return 0;
         }
         String msg = "§8[TARS] §fЮмор: " + tars.getHumor() + "% | "
