@@ -29,6 +29,7 @@ jobs:
           mkdir -p src/main/java/com/simplespace/entity
           mkdir -p src/main/java/com/simplespace/event
           mkdir -p src/main/java/com/simplespace/dimension
+          mkdir -p src/main/java/com/simplespace/item
 
           cp fixes/SpacePhysicsHandler.java src/main/java/com/simplespace/event/ 2>/dev/null || true
           cp fixes/SpacePlanetSpawner.java src/main/java/com/simplespace/event/ 2>/dev/null || true
@@ -39,7 +40,8 @@ jobs:
           cp fixes/SpaceDimensionEffects.java src/main/java/com/simplespace/client/ 2>/dev/null || true
           cp fixes/SpaceSkyRenderer.java src/main/java/com/simplespace/client/ 2>/dev/null || true
           cp fixes/ModEntities.java src/main/java/com/simplespace/entity/ 2>/dev/null || true
-          cp fixes/SimpleSpace.java src/main/java/com/simplespace/ 2>/dev/null || true
+          cp fixes/SimpleSpace.java src/main/java/com/simplespace/
+          cp fixes/ModItems.java src/main/java/com/simplespace/item/
           cp fixes/SpaceCommands.java src/main/java/com/simplespace/command/ 2>/dev/null || true
           cp fixes/ClientModEvents.java src/main/java/com/simplespace/client/
 
@@ -48,16 +50,26 @@ jobs:
           cp fixes/TarsGoToGoal.java src/main/java/com/simplespace/tars/
           cp fixes/TarsCommands.java src/main/java/com/simplespace/command/
           cp fixes/TarsMenuScreen.java src/main/java/com/simplespace/client/
+          cp fixes/TarsFlashScreen.java src/main/java/com/simplespace/client/
           cp fixes/TarsGeoModel.java src/main/java/com/simplespace/client/
           cp fixes/TarsGeoRenderer.java src/main/java/com/simplespace/client/
 
           mkdir -p src/main/resources/assets/simplespace/geo/entity
           mkdir -p src/main/resources/assets/simplespace/animations/entity
           mkdir -p src/main/resources/assets/simplespace/textures/entity
+          mkdir -p src/main/resources/assets/simplespace/textures/item
+          mkdir -p src/main/resources/assets/simplespace/models/item
+          mkdir -p src/main/resources/assets/simplespace/lang
           cp fixes/tars.geo.json src/main/resources/assets/simplespace/geo/entity/
           cp fixes/tars.animation.json src/main/resources/assets/simplespace/animations/entity/
 
           python3 -c "import base64,pathlib; pathlib.Path('src/main/resources/assets/simplespace/textures/entity/tars.png').write_bytes(base64.b64decode(pathlib.Path('fixes/tars.png.b64').read_text().strip()))"
+
+          for id in flash_l1 flash_l2 flash_l3; do
+            printf '%s\n' "{" "  \"parent\": \"minecraft:item/generated\"," "  \"textures\": { \"layer0\": \"simplespace:item/${id}\" }" "}" > "src/main/resources/assets/simplespace/models/item/${id}.json"
+          done
+          printf '%s\n' '{' '  "item.simplespace.flash_l1": "Флешка TARS L1 (Сканер)",' '  "item.simplespace.flash_l2": "Флешка TARS L2 (Добыча)",' '  "item.simplespace.flash_l3": "Флешка TARS L3 (Добыча+)"' '}' > src/main/resources/assets/simplespace/lang/ru_ru.json
+          printf '%s\n' '{' '  "item.simplespace.flash_l1": "TARS Flash L1",' '  "item.simplespace.flash_l2": "TARS Flash L2",' '  "item.simplespace.flash_l3": "TARS Flash L3"' '}' > src/main/resources/assets/simplespace/lang/en_us.json
 
           mkdir -p src/main/resources/data/simplespace/dimension_type
           mkdir -p src/main/resources/data/simplespace/dimension
@@ -67,7 +79,7 @@ jobs:
           cp fixes/moon_dim.json src/main/resources/data/simplespace/dimension/moon.json 2>/dev/null || true
           cp fixes/moon_wastes.json src/main/resources/data/simplespace/worldgen/biome/moon_wastes.json 2>/dev/null || true
 
-      - name: Generate planet textures
+      - name: Generate textures
         run: |
           python3 << 'PY'
           from pathlib import Path
@@ -157,7 +169,27 @@ jobs:
               return rr, gg, bb, a
 
           write_png(sky/'milky_way.png', 256, 64, milky)
-          print('planet textures ok')
+
+          # Flash drive item icons 16x16
+          item = Path('src/main/resources/assets/simplespace/textures/item')
+          item.mkdir(parents=True, exist_ok=True)
+          colors = {
+              'flash_l1': (80, 180, 255),
+              'flash_l2': (80, 220, 120),
+              'flash_l3': (255, 200, 60),
+          }
+          for name, (cr, cg, cb) in colors.items():
+              def make(x, y, w, h, cr=cr, cg=cg, cb=cb):
+                  # USB stick shape
+                  if 5 <= x <= 10 and 1 <= y <= 4:  # metal tip
+                      return 180, 180, 190, 255
+                  if 3 <= x <= 12 and 5 <= y <= 14:  # body
+                      shade = 1.0 if (x + y) % 3 else 0.85
+                      return int(cr*shade), int(cg*shade), int(cb*shade), 255
+                  return 0, 0, 0, 0
+              write_png(item/f'{name}.png', 16, 16, make)
+
+          print('all textures ok')
           PY
 
       - uses: actions/setup-java@v4
