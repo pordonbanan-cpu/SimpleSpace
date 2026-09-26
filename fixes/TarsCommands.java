@@ -2,6 +2,7 @@ package com.simplespace.command;
 
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.simplespace.item.ModItems;
 import com.simplespace.tars.TarsEntity;
 import com.simplespace.entity.ModEntities;
 import net.minecraft.commands.CommandSourceStack;
@@ -11,6 +12,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.AABB;
 
 public class TarsCommands {
@@ -34,6 +36,9 @@ public class TarsCommands {
                                     IntegerArgumentType.getInteger(ctx, "x"),
                                     IntegerArgumentType.getInteger(ctx, "y"),
                                     IntegerArgumentType.getInteger(ctx, "z")))))))
+                .then(Commands.literal("flash")
+                    .then(Commands.argument("level", IntegerArgumentType.integer(1, 3))
+                        .executes(ctx -> flash(ctx.getSource(), IntegerArgumentType.getInteger(ctx, "level")))))
                 .then(Commands.literal("за_мной").executes(ctx -> order(ctx.getSource(), "follow")))
                 .then(Commands.literal("стой").executes(ctx -> order(ctx.getSource(), "stay")))
                 .then(Commands.literal("беги").executes(ctx -> order(ctx.getSource(), "sprint")))
@@ -61,7 +66,7 @@ public class TarsCommands {
         t.moveTo(p.getX() + 1.5, p.getY(), p.getZ() + 1.5, p.getYRot(), 0);
         t.setOwnerUUID(p.getUUID());
         level.addFreshEntity(t);
-        t.speak(p, "Онлайн. Shift+ПКМ — панель. Чат: за мной / стой / беги.");
+        t.speak(p, "Онлайн. Shift+ПКМ — панель.");
         return 1;
     }
 
@@ -75,24 +80,19 @@ public class TarsCommands {
         if (t.getOwnerUUID() == null) t.setOwnerUUID(p.getUUID());
         switch (kind) {
             case "follow" -> {
-                t.setFollowing(true);
-                t.setSprintMode(false);
+                t.setFollowing(true); t.setSprintMode(false); t.clearGoToTarget(false);
                 t.speak(p, "Иду за вами.");
             }
             case "stay" -> {
-                t.setFollowing(false);
-                t.setSprintMode(false);
-                t.clearGoToTarget(false);
-                t.getNavigation().stop();
-                t.speak(p, "Стояю.");
+                t.setFollowing(false); t.setSprintMode(false); t.clearGoToTarget(false);
+                t.getNavigation().stop(); t.speak(p, "Стою.");
             }
             case "sprint" -> {
-                t.setFollowing(true);
-                t.setSprintMode(true);
+                t.setFollowing(true); t.setSprintMode(true); t.clearGoToTarget(false);
                 t.speak(p, "Перекат.");
             }
-            case "status" -> t.speak(p, "Юмор " + t.getHumor() + "%. "
-                    + (t.isFollowing() ? "Следую." : "Стояю.")
+            case "status" -> t.speak(p, "L" + t.getFlashLevel() + ". Юмор " + t.getHumor() + "%. "
+                    + (t.isFollowing() ? "Следую." : "Стою.")
                     + (t.isSprintMode() ? " Перекат." : "")
                     + (t.getGoToTarget() != null ? " Иду на точку." : ""));
         }
@@ -102,25 +102,40 @@ public class TarsCommands {
     private static int humor(CommandSourceStack src, int value) {
         if (!(src.getEntity() instanceof ServerPlayer p)) return 0;
         TarsEntity t = nearest(p);
-        if (t == null) {
-            src.sendFailure(Component.literal("TARS не найден рядом."));
-            return 0;
-        }
+        if (t == null) { src.sendFailure(Component.literal("TARS не найден рядом.")); return 0; }
         t.setHumor(value);
-        t.speak(p, "Юмор установлен: " + value + "%.");
+        t.speak(p, "Юмор: " + value + "%.");
         return 1;
     }
 
     private static int gotoCmd(CommandSourceStack src, int x, int y, int z) {
         if (!(src.getEntity() instanceof ServerPlayer p)) return 0;
         TarsEntity t = nearest(p);
-        if (t == null) {
-            src.sendFailure(Component.literal("TARS не найден рядом."));
-            return 0;
-        }
+        if (t == null) { src.sendFailure(Component.literal("TARS не найден рядом.")); return 0; }
         if (t.getOwnerUUID() == null) t.setOwnerUUID(p.getUUID());
         t.setGoToTarget(new BlockPos(x, y, z));
         t.speak(p, "Иду на " + x + " " + y + " " + z + ".");
+        return 1;
+    }
+
+    private static int flash(CommandSourceStack src, int level) {
+        if (!(src.getEntity() instanceof ServerPlayer p)) return 0;
+        TarsEntity t = nearest(p);
+        if (t == null) { src.sendFailure(Component.literal("TARS не найден рядом.")); return 0; }
+        boolean found = false;
+        for (int i = 0; i < p.getInventory().getContainerSize(); i++) {
+            ItemStack st = p.getInventory().getItem(i);
+            if (ModItems.getFlashTier(st) == level) {
+                if (!p.getAbilities().instabuild) st.shrink(1);
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            t.speak(p, "Флешка L" + level + " не найдена в инвентаре.");
+            return 0;
+        }
+        t.beginFlashInstall(level, p);
         return 1;
     }
 }
