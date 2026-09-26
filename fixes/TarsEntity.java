@@ -13,7 +13,6 @@ import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.FloatGoal;
-import net.minecraft.world.entity.ai.goal.LookAtPlayerGoal;
 import net.minecraft.world.entity.ai.goal.RandomLookAroundGoal;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
@@ -40,6 +39,7 @@ public class TarsEntity extends PathfinderMob implements GeoEntity {
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
     private UUID ownerUUID;
     private int jokeCooldown;
+    private float lockedYRot = Float.NaN;
 
     private static final RawAnimation IDLE = RawAnimation.begin().thenLoop("idle");
     private static final RawAnimation WALK = RawAnimation.begin().thenLoop("walk");
@@ -82,14 +82,28 @@ public class TarsEntity extends PathfinderMob implements GeoEntity {
     protected void registerGoals() {
         this.goalSelector.addGoal(0, new FloatGoal(this));
         this.goalSelector.addGoal(1, new TarsFollowOwnerGoal(this, 1.25, 1.5f, 2.0f));
-        this.goalSelector.addGoal(2, new LookAtPlayerGoal(this, Player.class, 10.0f));
-        this.goalSelector.addGoal(3, new RandomLookAroundGoal(this));
+        this.goalSelector.addGoal(2, new TarsLookAtOwnerGoal(this));
+        this.goalSelector.addGoal(3, new RandomLookAroundGoal(this) {
+            @Override
+            public boolean canUse() {
+                return !TarsEntity.this.isFollowing() && super.canUse();
+            }
+        });
     }
 
     public int getHumor() { return this.entityData.get(HUMOR); }
     public void setHumor(int v) { this.entityData.set(HUMOR, Math.max(0, Math.min(100, v))); }
     public boolean isFollowing() { return this.entityData.get(FOLLOWING); }
-    public void setFollowing(boolean v) { this.entityData.set(FOLLOWING, v); }
+
+    public void setFollowing(boolean v) {
+        this.entityData.set(FOLLOWING, v);
+        if (!v) {
+            this.lockedYRot = this.getYRot();
+        } else {
+            this.lockedYRot = Float.NaN;
+        }
+    }
+
     public boolean isSprintMode() { return this.entityData.get(SPRINT_MODE); }
     public void setSprintMode(boolean v) { this.entityData.set(SPRINT_MODE, v); }
     public UUID getOwnerUUID() { return ownerUUID; }
@@ -107,6 +121,26 @@ public class TarsEntity extends PathfinderMob implements GeoEntity {
     @Override
     public void tick() {
         super.tick();
+
+        if (!level().isClientSide()) {
+            if (isFollowing()) {
+                Player owner = getOwner();
+                if (owner != null && owner.isAlive()) {
+                    this.getLookControl().setLookAt(owner, 40.0f, 40.0f);
+                    double dx = owner.getX() - this.getX();
+                    double dz = owner.getZ() - this.getZ();
+                    float target = (float) (Math.atan2(dz, dx) * (180F / Math.PI)) - 90.0F;
+                    this.setYRot(approachDegrees(this.getYRot(), target, 8.0f));
+                    this.yBodyRot = this.getYRot();
+                    this.yHeadRot = this.getYRot();
+                }
+            } else if (!Float.isNaN(lockedYRot)) {
+                this.setYRot(lockedYRot);
+                this.yBodyRot = lockedYRot;
+                this.yHeadRot = lockedYRot;
+            }
+        }
+
         if (level().isClientSide()) return;
         if (getHumor() <= 0) return;
         if (--jokeCooldown > 0) return;
@@ -117,6 +151,13 @@ public class TarsEntity extends PathfinderMob implements GeoEntity {
         if (owner instanceof ServerPlayer sp && distanceToSqr(sp) < 48 * 48) {
             speak(sp, JOKES[random.nextInt(JOKES.length)]);
         }
+    }
+
+    private static float approachDegrees(float current, float target, float maxDelta) {
+        float d = net.minecraft.util.Mth.wrapDegrees(target - current);
+        if (d > maxDelta) d = maxDelta;
+        if (d < -maxDelta) d = -maxDelta;
+        return current + d;
     }
 
     @Override
