@@ -44,6 +44,7 @@ jobs:
 
           cp fixes/TarsEntity.java src/main/java/com/simplespace/tars/
           cp fixes/TarsFollowOwnerGoal.java src/main/java/com/simplespace/tars/
+          cp fixes/TarsLookAtOwnerGoal.java src/main/java/com/simplespace/tars/
           cp fixes/TarsCommands.java src/main/java/com/simplespace/command/
           cp fixes/TarsMenuScreen.java src/main/java/com/simplespace/client/
           cp fixes/TarsGeoModel.java src/main/java/com/simplespace/client/
@@ -55,7 +56,6 @@ jobs:
           cp fixes/tars.geo.json src/main/resources/assets/simplespace/geo/entity/
           cp fixes/tars.animation.json src/main/resources/assets/simplespace/animations/entity/
 
-          # User texture from Blockbench
           python3 -c "import base64,pathlib; pathlib.Path('src/main/resources/assets/simplespace/textures/entity/tars.png').write_bytes(base64.b64decode(pathlib.Path('fixes/tars.png.b64').read_text().strip()))"
 
           mkdir -p src/main/resources/data/simplespace/dimension_type
