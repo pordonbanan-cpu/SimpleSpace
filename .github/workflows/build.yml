@@ -18,8 +18,11 @@ jobs:
           fi
           chmod +x gradlew || true
 
-      - name: Apply all fixes including TARS
+      - name: Apply GeckoLib build.gradle and TARS
         run: |
+          cp fixes/build.gradle.geckolib build.gradle
+          cp fixes/neoforge.mods.toml src/main/resources/META-INF/neoforge.mods.toml
+
           mkdir -p src/main/java/com/simplespace/tars
           mkdir -p src/main/java/com/simplespace/client
           mkdir -p src/main/java/com/simplespace/command
@@ -37,13 +40,20 @@ jobs:
           cp fixes/ModEntities.java src/main/java/com/simplespace/entity/ 2>/dev/null || true
           cp fixes/SimpleSpace.java src/main/java/com/simplespace/ 2>/dev/null || true
           cp fixes/SpaceCommands.java src/main/java/com/simplespace/command/ 2>/dev/null || true
-          cp fixes/ClientModEvents.java src/main/java/com/simplespace/client/ 2>/dev/null || true
+          cp fixes/ClientModEvents.java src/main/java/com/simplespace/client/
 
           cp fixes/TarsEntity.java src/main/java/com/simplespace/tars/
           cp fixes/TarsFollowOwnerGoal.java src/main/java/com/simplespace/tars/
           cp fixes/TarsCommands.java src/main/java/com/simplespace/command/
-          cp fixes/TarsRenderer.java src/main/java/com/simplespace/client/
           cp fixes/TarsMenuScreen.java src/main/java/com/simplespace/client/
+          cp fixes/TarsGeoModel.java src/main/java/com/simplespace/client/
+          cp fixes/TarsGeoRenderer.java src/main/java/com/simplespace/client/
+
+          mkdir -p src/main/resources/assets/simplespace/geo/entity
+          mkdir -p src/main/resources/assets/simplespace/animations/entity
+          mkdir -p src/main/resources/assets/simplespace/textures/entity
+          cp fixes/tars.geo.json src/main/resources/assets/simplespace/geo/entity/
+          cp fixes/tars.animation.json src/main/resources/assets/simplespace/animations/entity/
 
           mkdir -p src/main/resources/data/simplespace/dimension_type
           mkdir -p src/main/resources/data/simplespace/dimension
@@ -117,6 +127,23 @@ jobs:
           write_png(out/'earth.png', SIZE, SIZE, earth)
           write_png(out/'moon.png', SIZE, SIZE, moon)
 
+          # TARS texture matching geo UVs: dark body [0,0], sensor [0,14], stripe [10,14]
+          def tars(x, y, w, h):
+              # default near-black metal
+              r, g, b = 18, 18, 22
+              # body face region
+              if x < 24 and y < 32:
+                  r, g, b = 22, 24, 28
+              # sensor cyan 2x2 at uv 0,14
+              if 0 <= x < 4 and 14 <= y < 18:
+                  r, g, b = 40, 200, 255
+              # gold stripe tall strip at uv 10,14 size 2x32
+              if 10 <= x < 14 and 14 <= y < 46:
+                  r, g, b = 220, 180, 40
+              return r, g, b, 255
+
+          write_png(out/'tars.png', SIZE, SIZE, tars)
+
           sky = Path('src/main/resources/assets/simplespace/textures/sky')
           sky.mkdir(parents=True, exist_ok=True)
 
@@ -131,16 +158,16 @@ jobs:
                   hsh = ((nx * 374761393 + ny * 668265263) ^ (nx * ny * 127)) & 0xFFFF
                   n += (hsh / 65535.0 - 0.5) * amp
               density = max(0, min(1, base * 0.85 + n * 0.4 * base))
-              r = int(180 + 40 * density)
-              g = int(185 + 40 * density)
-              b = int(220 + 25 * density)
+              rr = int(180 + 40 * density)
+              gg = int(185 + 40 * density)
+              bb = int(220 + 25 * density)
               a = int(40 + 160 * density)
               if density > 0.6 and ((x * 17 + y * 31) & 63) < 3:
                   a = min(255, a + 60)
-                  r = min(255, r + 30)
-                  g = min(255, g + 30)
-                  b = min(255, b + 20)
-              return r, g, b, a
+                  rr = min(255, rr + 30)
+                  gg = min(255, gg + 30)
+                  bb = min(255, bb + 20)
+              return rr, gg, bb, a
 
           write_png(sky/'milky_way.png', 256, 64, milky)
           print('all textures ok')
