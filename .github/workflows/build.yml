@@ -55,6 +55,9 @@ jobs:
           cp fixes/tars.geo.json src/main/resources/assets/simplespace/geo/entity/
           cp fixes/tars.animation.json src/main/resources/assets/simplespace/animations/entity/
 
+          # User texture from Blockbench
+          python3 -c "import base64,pathlib; pathlib.Path('src/main/resources/assets/simplespace/textures/entity/tars.png').write_bytes(base64.b64decode(pathlib.Path('fixes/tars.png.b64').read_text().strip()))"
+
           mkdir -p src/main/resources/data/simplespace/dimension_type
           mkdir -p src/main/resources/data/simplespace/dimension
           mkdir -p src/main/resources/data/simplespace/worldgen/biome
@@ -63,7 +66,7 @@ jobs:
           cp fixes/moon_dim.json src/main/resources/data/simplespace/dimension/moon.json 2>/dev/null || true
           cp fixes/moon_wastes.json src/main/resources/data/simplespace/worldgen/biome/moon_wastes.json 2>/dev/null || true
 
-      - name: Generate textures
+      - name: Generate planet textures
         run: |
           python3 << 'PY'
           from pathlib import Path
@@ -127,25 +130,6 @@ jobs:
           write_png(out/'earth.png', SIZE, SIZE, earth)
           write_png(out/'moon.png', SIZE, SIZE, moon)
 
-          # Dark metal TARS + blue sensor tiles (UV 0,0 body; 32,0 sensors)
-          def tars(x, y, w, h):
-              # panel grid
-              gx, gy = x // 4, y // 4
-              hsh = ((gx * 17) ^ (gy * 11)) & 15
-              base = 35 + hsh
-              r, g, b = base, base + 1, base + 3
-              # lighter edge lines
-              if x % 8 == 0 or y % 8 == 0:
-                  r, g, b = min(255, r + 18), min(255, g + 18), min(255, b + 20)
-              # blue LED region for sensor UV ~32,0
-              if 32 <= x < 48 and 0 <= y < 12:
-                  r, g, b = 20, 120, 220
-                  if (x + y) % 3 == 0:
-                      r, g, b = 40, 180, 255
-              return r, g, b, 255
-
-          write_png(out/'tars.png', SIZE, SIZE, tars)
-
           sky = Path('src/main/resources/assets/simplespace/textures/sky')
           sky.mkdir(parents=True, exist_ok=True)
 
@@ -172,7 +156,7 @@ jobs:
               return rr, gg, bb, a
 
           write_png(sky/'milky_way.png', 256, 64, milky)
-          print('all textures ok')
+          print('planet textures ok')
           PY
 
       - uses: actions/setup-java@v4
