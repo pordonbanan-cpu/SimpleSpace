@@ -38,9 +38,7 @@ public class TarsFollowOwnerGoal extends Goal {
     }
 
     @Override
-    public void start() {
-        timeToRecalcPath = 0;
-    }
+    public void start() { timeToRecalcPath = 0; }
 
     @Override
     public void stop() {
@@ -53,10 +51,11 @@ public class TarsFollowOwnerGoal extends Goal {
         if (owner == null) return;
         tars.getLookControl().setLookAt(owner, 25.0f, tars.getMaxHeadXRot());
         if (--timeToRecalcPath <= 0) {
-            timeToRecalcPath = 5;
+            timeToRecalcPath = 4;
             double distSq = tars.distanceToSqr(owner);
             double spd = speed;
-            if (distSq > 64) spd = speed * 1.35;
+            if (tars.isSprintMode()) spd = speed * 1.7;
+            else if (distSq > 64) spd = speed * 1.4;
             tars.getNavigation().moveTo(owner, spd);
         }
     }

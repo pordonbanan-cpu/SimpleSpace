@@ -41,7 +41,7 @@ public class ModEntities {
     public static final DeferredHolder<EntityType<?>, EntityType<TarsEntity>> TARS =
             ENTITIES.register("tars", () -> EntityType.Builder
                     .<TarsEntity>of(TarsEntity::new, MobCategory.CREATURE)
-                    .sized(0.9f, 1.95f)
+                    .sized(0.75f, 2.0f)
                     .clientTrackingRange(64)
                     .build("tars"));
 
