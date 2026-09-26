@@ -18,18 +18,33 @@ jobs:
           fi
           chmod +x gradlew || true
 
-      - name: Apply all fixes
+      - name: Apply all fixes including TARS
         run: |
+          mkdir -p src/main/java/com/simplespace/tars
+          mkdir -p src/main/java/com/simplespace/client
+          mkdir -p src/main/java/com/simplespace/command
+          mkdir -p src/main/java/com/simplespace/entity
+          mkdir -p src/main/java/com/simplespace/event
+          mkdir -p src/main/java/com/simplespace/dimension
+
           cp fixes/SpacePhysicsHandler.java src/main/java/com/simplespace/event/ 2>/dev/null || true
           cp fixes/SpacePlanetSpawner.java src/main/java/com/simplespace/event/ 2>/dev/null || true
           cp fixes/SpaceTransitionHandler.java src/main/java/com/simplespace/event/ 2>/dev/null || true
           cp fixes/ModDimensions.java src/main/java/com/simplespace/dimension/ 2>/dev/null || true
           cp fixes/CelestialBodyRenderer.java src/main/java/com/simplespace/client/ 2>/dev/null || true
-          cp fixes/SpaceDimensionEffects.java src/main/java/com/simplespace/client/
-          cp fixes/SpaceSkyRenderer.java src/main/java/com/simplespace/client/
+          cp fixes/SpaceDimensionEffects.java src/main/java/com/simplespace/client/ 2>/dev/null || true
+          cp fixes/SpaceSkyRenderer.java src/main/java/com/simplespace/client/ 2>/dev/null || true
           cp fixes/ModEntities.java src/main/java/com/simplespace/entity/ 2>/dev/null || true
           cp fixes/SimpleSpace.java src/main/java/com/simplespace/ 2>/dev/null || true
           cp fixes/SpaceCommands.java src/main/java/com/simplespace/command/ 2>/dev/null || true
+          cp fixes/ClientModEvents.java src/main/java/com/simplespace/client/ 2>/dev/null || true
+
+          # TARS
+          cp fixes/TarsEntity.java src/main/java/com/simplespace/tars/
+          cp fixes/TarsFollowOwnerGoal.java src/main/java/com/simplespace/tars/
+          cp fixes/TarsCommands.java src/main/java/com/simplespace/command/
+          cp fixes/TarsRenderer.java src/main/java/com/simplespace/client/
+
           mkdir -p src/main/resources/data/simplespace/dimension_type
           mkdir -p src/main/resources/data/simplespace/dimension
           mkdir -p src/main/resources/data/simplespace/worldgen/biome
@@ -57,7 +72,6 @@ jobs:
               data = b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', ihdr) + chunk(b'IDAT', zlib.compress(bytes(raw), 9)) + chunk(b'IEND', b'')
               Path(path).write_bytes(data)
 
-          # Planet discs
           out = Path('src/main/resources/assets/simplespace/textures/entity')
           out.mkdir(parents=True, exist_ok=True)
           SIZE = 128
@@ -103,7 +117,6 @@ jobs:
           write_png(out/'earth.png', SIZE, SIZE, earth)
           write_png(out/'moon.png', SIZE, SIZE, moon)
 
-          # Milky way
           sky = Path('src/main/resources/assets/simplespace/textures/sky')
           sky.mkdir(parents=True, exist_ok=True)
 
