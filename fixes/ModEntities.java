@@ -1,6 +1,7 @@
 package com.simplespace.entity;
 
 import com.simplespace.SimpleSpace;
+import com.simplespace.tars.TarsEntity;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
@@ -36,6 +37,13 @@ public class ModEntities {
                     .clientTrackingRange(512)
                     .updateInterval(Integer.MAX_VALUE)
                     .build("moon"));
+
+    public static final DeferredHolder<EntityType<?>, EntityType<TarsEntity>> TARS =
+            ENTITIES.register("tars", () -> EntityType.Builder
+                    .<TarsEntity>of(TarsEntity::new, MobCategory.CREATURE)
+                    .sized(0.9f, 1.95f)
+                    .clientTrackingRange(64)
+                    .build("tars"));
 
     public static void register(IEventBus bus) {
         ENTITIES.register(bus);
