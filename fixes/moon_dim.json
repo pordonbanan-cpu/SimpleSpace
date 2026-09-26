@@ -1,0 +1,15 @@
+{
+  "type": "simplespace:moon",
+  "generator": {
+    "type": "minecraft:flat",
+    "settings": {
+      "biome": "simplespace:moon_wastes",
+      "layers": [
+        { "block": "minecraft:bedrock", "height": 1 },
+        { "block": "minecraft:stone", "height": 20 },
+        { "block": "minecraft:end_stone", "height": 8 }
+      ],
+      "structure_overrides": []
+    }
+  }
+}

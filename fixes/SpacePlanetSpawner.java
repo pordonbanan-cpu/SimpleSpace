@@ -22,22 +22,17 @@ public class SpacePlanetSpawner {
 
     public static void forceRespawn(ServerLevel spaceLevel) {
         for (Entity e : spaceLevel.getAllEntities()) {
-            if (e instanceof CelestialBodyEntity) {
-                e.discard();
-            }
+            if (e instanceof CelestialBodyEntity) e.discard();
         }
         planetsSpawned = false;
         ensurePlanets(spaceLevel);
     }
 
     private static void spawnAll(ServerLevel level) {
-        // Earth at origin
-        spawnPlanet(level, ModEntities.EARTH.get(), 0, 40, 0);
-        // Moon ~60 Earth-radii scaled (~400 blocks)
-        spawnPlanet(level, ModEntities.MOON.get(), -320, 50, -200);
-        // Sun far away (~2000 blocks)
-        spawnPlanet(level, ModEntities.SUN.get(), 1800, 200, 1200);
-        SimpleSpace.LOGGER.info("Spawned planets with scaled solar-system distances");
+        spawnPlanet(level, ModEntities.EARTH.get(), 0, 0, 0);
+        spawnPlanet(level, ModEntities.MOON.get(), -180, 20, -40);
+        spawnPlanet(level, ModEntities.SUN.get(), 700, 80, 200);
+        SimpleSpace.LOGGER.info("Spawned solar system (compressed scale)");
     }
 
     @SubscribeEvent
