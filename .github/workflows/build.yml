@@ -39,11 +39,11 @@ jobs:
           cp fixes/SpaceCommands.java src/main/java/com/simplespace/command/ 2>/dev/null || true
           cp fixes/ClientModEvents.java src/main/java/com/simplespace/client/ 2>/dev/null || true
 
-          # TARS
           cp fixes/TarsEntity.java src/main/java/com/simplespace/tars/
           cp fixes/TarsFollowOwnerGoal.java src/main/java/com/simplespace/tars/
           cp fixes/TarsCommands.java src/main/java/com/simplespace/command/
           cp fixes/TarsRenderer.java src/main/java/com/simplespace/client/
+          cp fixes/TarsMenuScreen.java src/main/java/com/simplespace/client/
 
           mkdir -p src/main/resources/data/simplespace/dimension_type
           mkdir -p src/main/resources/data/simplespace/dimension
