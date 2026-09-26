@@ -39,13 +39,26 @@ public class TarsEntity extends PathfinderMob implements GeoEntity {
 
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
     private UUID ownerUUID;
+    private int jokeCooldown;
 
     private static final RawAnimation IDLE = RawAnimation.begin().thenLoop("idle");
     private static final RawAnimation WALK = RawAnimation.begin().thenLoop("walk");
     private static final RawAnimation RUN = RawAnimation.begin().thenLoop("run");
 
+    private static final String[] JOKES = {
+            "Это была шутка. Или нет.",
+            "Коопера.",
+            "Честность 90%. Юмор… пересчитываю.",
+            "Я бы пошутил про гравитацию, но она меня не держит.",
+            "Ваш план имеет 12% успеха. Вдохновляет.",
+            "Модули на месте. Энтузиазм — опционален.",
+            "Я не игнорирую приказы. Я приоритизирую.",
+            "Если бы у меня было чувство юмора на 100%, вы бы уже смеялись. Или нет."
+    };
+
     public TarsEntity(EntityType<? extends PathfinderMob> type, Level level) {
         super(type, level);
+        this.jokeCooldown = 200 + random.nextInt(200);
     }
 
     public static AttributeSupplier.Builder createAttributes() {
@@ -88,17 +101,22 @@ public class TarsEntity extends PathfinderMob implements GeoEntity {
     }
 
     public void speak(ServerPlayer to, String line) {
-        String prefix = "§8[TARS] §f";
-        if (getHumor() >= 70 && random.nextFloat() < getHumor() / 160f) {
-            String[] jokes = {
-                    "Юмор " + getHumor() + "%.",
-                    "Это была шутка. Или нет.",
-                    "Коопера.",
-                    "Честность 90%."
-            };
-            to.sendSystemMessage(Component.literal(prefix + jokes[random.nextInt(jokes.length)]));
+        to.sendSystemMessage(Component.literal("§8[TARS] §f" + line));
+    }
+
+    @Override
+    public void tick() {
+        super.tick();
+        if (level().isClientSide()) return;
+        if (getHumor() <= 0) return;
+        if (--jokeCooldown > 0) return;
+        float chance = getHumor() / 100f;
+        jokeCooldown = 300 + random.nextInt(400);
+        if (random.nextFloat() > chance * 0.55f) return;
+        Player owner = getOwner();
+        if (owner instanceof ServerPlayer sp && distanceToSqr(sp) < 48 * 48) {
+            speak(sp, JOKES[random.nextInt(JOKES.length)]);
         }
-        to.sendSystemMessage(Component.literal(prefix + line));
     }
 
     @Override
