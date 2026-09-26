@@ -127,19 +127,14 @@ jobs:
           write_png(out/'earth.png', SIZE, SIZE, earth)
           write_png(out/'moon.png', SIZE, SIZE, moon)
 
-          # TARS texture matching geo UVs: dark body [0,0], sensor [0,14], stripe [10,14]
+          # TARS: gray metal body only (no gold stripe). UV [0,0] for segments, cyan sensor [0,14]
           def tars(x, y, w, h):
-              # default near-black metal
-              r, g, b = 18, 18, 22
-              # body face region
-              if x < 24 and y < 32:
-                  r, g, b = 22, 24, 28
-              # sensor cyan 2x2 at uv 0,14
-              if 0 <= x < 4 and 14 <= y < 18:
+              hsh = ((x * 13) ^ (y * 7)) & 31
+              shade = 118 + hsh
+              r, g, b = shade, shade, min(255, shade + 4)
+              # cyan sensor at uv 0,14
+              if 0 <= x < 6 and 14 <= y < 20:
                   r, g, b = 40, 200, 255
-              # gold stripe tall strip at uv 10,14 size 2x32
-              if 10 <= x < 14 and 14 <= y < 46:
-                  r, g, b = 220, 180, 40
               return r, g, b, 255
 
           write_png(out/'tars.png', SIZE, SIZE, tars)
