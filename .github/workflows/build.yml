@@ -33,6 +33,7 @@ jobs:
           cp fixes/SpacePhysicsHandler.java src/main/java/com/simplespace/event/ 2>/dev/null || true
           cp fixes/SpacePlanetSpawner.java src/main/java/com/simplespace/event/ 2>/dev/null || true
           cp fixes/SpaceTransitionHandler.java src/main/java/com/simplespace/event/ 2>/dev/null || true
+          cp fixes/TarsChatHandler.java src/main/java/com/simplespace/event/
           cp fixes/ModDimensions.java src/main/java/com/simplespace/dimension/ 2>/dev/null || true
           cp fixes/CelestialBodyRenderer.java src/main/java/com/simplespace/client/ 2>/dev/null || true
           cp fixes/SpaceDimensionEffects.java src/main/java/com/simplespace/client/ 2>/dev/null || true
@@ -44,7 +45,7 @@ jobs:
 
           cp fixes/TarsEntity.java src/main/java/com/simplespace/tars/
           cp fixes/TarsFollowOwnerGoal.java src/main/java/com/simplespace/tars/
-          cp fixes/TarsLookAtOwnerGoal.java src/main/java/com/simplespace/tars/
+          cp fixes/TarsGoToGoal.java src/main/java/com/simplespace/tars/
           cp fixes/TarsCommands.java src/main/java/com/simplespace/command/
           cp fixes/TarsMenuScreen.java src/main/java/com/simplespace/client/
           cp fixes/TarsGeoModel.java src/main/java/com/simplespace/client/
