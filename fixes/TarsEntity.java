@@ -51,7 +51,7 @@ public class TarsEntity extends PathfinderMob implements GeoEntity {
     public static AttributeSupplier.Builder createAttributes() {
         return Mob.createMobAttributes()
                 .add(Attributes.MAX_HEALTH, 40.0)
-                .add(Attributes.MOVEMENT_SPEED, 0.30)
+                .add(Attributes.MOVEMENT_SPEED, 0.32)
                 .add(Attributes.FOLLOW_RANGE, 64.0)
                 .add(Attributes.KNOCKBACK_RESISTANCE, 0.7)
                 .add(Attributes.ARMOR, 6.0);
@@ -68,7 +68,7 @@ public class TarsEntity extends PathfinderMob implements GeoEntity {
     @Override
     protected void registerGoals() {
         this.goalSelector.addGoal(0, new FloatGoal(this));
-        this.goalSelector.addGoal(1, new TarsFollowOwnerGoal(this, 1.2, 1.6f, 2.2f));
+        this.goalSelector.addGoal(1, new TarsFollowOwnerGoal(this, 1.25, 1.5f, 2.0f));
         this.goalSelector.addGoal(2, new LookAtPlayerGoal(this, Player.class, 10.0f));
         this.goalSelector.addGoal(3, new RandomLookAroundGoal(this));
     }
@@ -126,14 +126,16 @@ public class TarsEntity extends PathfinderMob implements GeoEntity {
 
     @Override
     public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
-        controllers.add(new AnimationController<>(this, "main", 5, this::predicate));
+        controllers.add(new AnimationController<>(this, "main", 4, this::predicate));
     }
 
     private PlayState predicate(AnimationState<TarsEntity> state) {
-        if (this.isSprintMode()) {
-            state.setAnimation(RUN);
-        } else if (state.isMoving()) {
-            state.setAnimation(WALK);
+        if (state.isMoving()) {
+            if (this.isSprintMode()) {
+                state.setAnimation(RUN);
+            } else {
+                state.setAnimation(WALK);
+            }
         } else {
             state.setAnimation(IDLE);
         }
