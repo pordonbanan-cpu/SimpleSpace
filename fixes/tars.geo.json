@@ -6,47 +6,41 @@
         "identifier": "geometry.tars",
         "texture_width": 128,
         "texture_height": 128,
-        "visible_bounds_width": 4,
-        "visible_bounds_height": 4,
-        "visible_bounds_offset": [0, 1.5, 0]
+        "visible_bounds_width": 3,
+        "visible_bounds_height": 3,
+        "visible_bounds_offset": [0, 1, 0]
       },
       "bones": [
         { "name": "root", "pivot": [0, 0, 0] },
         {
           "name": "segment1",
           "parent": "root",
-          "pivot": [0, 0, 0],
-          "cubes": [ { "origin": [-4, 0, -3], "size": [8, 8, 6], "uv": [0, 0] } ]
+          "pivot": [0, 4, 0],
+          "cubes": [ { "origin": [-3, 0, -2], "size": [6, 8, 4], "uv": [0, 0] } ]
         },
         {
           "name": "segment2",
-          "parent": "segment1",
-          "pivot": [0, 8, 0],
-          "cubes": [ { "origin": [-4, 0, -3], "size": [8, 8, 6], "uv": [0, 0] } ]
+          "parent": "root",
+          "pivot": [0, 12, 0],
+          "cubes": [ { "origin": [-3, 8, -2], "size": [6, 8, 4], "uv": [0, 0] } ]
         },
         {
           "name": "segment3",
-          "parent": "segment2",
-          "pivot": [0, 8, 0],
-          "cubes": [ { "origin": [-4, 0, -3], "size": [8, 8, 6], "uv": [0, 0] } ]
+          "parent": "root",
+          "pivot": [0, 20, 0],
+          "cubes": [ { "origin": [-3, 16, -2], "size": [6, 8, 4], "uv": [0, 0] } ]
         },
         {
           "name": "segment4",
-          "parent": "segment3",
-          "pivot": [0, 8, 0],
-          "cubes": [ { "origin": [-4, 0, -3], "size": [8, 8, 6], "uv": [0, 0] } ]
+          "parent": "root",
+          "pivot": [0, 28, 0],
+          "cubes": [ { "origin": [-3, 24, -2], "size": [6, 8, 4], "uv": [0, 0] } ]
         },
         {
           "name": "sensor",
           "parent": "segment4",
-          "pivot": [0, 6, -3],
-          "cubes": [ { "origin": [-1.5, 5, -3.5], "size": [3, 3, 1.5], "uv": [0, 14] } ]
-        },
-        {
-          "name": "stripe",
-          "parent": "root",
-          "pivot": [0, 16, -3],
-          "cubes": [ { "origin": [-1, 0, -3.5], "size": [2, 32, 1.2], "uv": [10, 14] } ]
+          "pivot": [0, 30, -2],
+          "cubes": [ { "origin": [-1, 29, -2.5], "size": [2, 2, 1], "uv": [0, 14] } ]
         }
       ]
     }
