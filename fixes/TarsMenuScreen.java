@@ -72,9 +72,12 @@ public class TarsMenuScreen extends Screen {
     }
 
     @Override
-    public void render(GuiGraphics g, int mouseX, int mouseY, float partial) {
-        g.fill(0, 0, this.width, this.height, 0x66000000);
+    public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float partial) {
+        // no blur / no dim
+    }
 
+    @Override
+    public void render(GuiGraphics g, int mouseX, int mouseY, float partial) {
         int cx = this.width / 2;
         int cy = this.height / 2;
         int x0 = cx - PANEL_W / 2;
