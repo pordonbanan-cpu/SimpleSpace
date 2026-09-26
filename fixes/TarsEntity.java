@@ -1,10 +1,6 @@
 package com.simplespace.tars;
 
-import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.HoverEvent;
-import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.network.chat.Style;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
@@ -30,6 +26,8 @@ public class TarsEntity extends PathfinderMob {
             SynchedEntityData.defineId(TarsEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Boolean> FOLLOWING =
             SynchedEntityData.defineId(TarsEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Boolean> SPRINT_MODE =
+            SynchedEntityData.defineId(TarsEntity.class, EntityDataSerializers.BOOLEAN);
 
     private UUID ownerUUID;
 
@@ -40,9 +38,9 @@ public class TarsEntity extends PathfinderMob {
     public static AttributeSupplier.Builder createAttributes() {
         return Mob.createMobAttributes()
                 .add(Attributes.MAX_HEALTH, 40.0)
-                .add(Attributes.MOVEMENT_SPEED, 0.32)
+                .add(Attributes.MOVEMENT_SPEED, 0.30)
                 .add(Attributes.FOLLOW_RANGE, 64.0)
-                .add(Attributes.KNOCKBACK_RESISTANCE, 0.6)
+                .add(Attributes.KNOCKBACK_RESISTANCE, 0.7)
                 .add(Attributes.ARMOR, 6.0);
     }
 
@@ -51,114 +49,77 @@ public class TarsEntity extends PathfinderMob {
         super.defineSynchedData(builder);
         builder.define(HUMOR, 75);
         builder.define(FOLLOWING, true);
+        builder.define(SPRINT_MODE, false);
     }
 
     @Override
     protected void registerGoals() {
         this.goalSelector.addGoal(0, new FloatGoal(this));
-        this.goalSelector.addGoal(1, new TarsFollowOwnerGoal(this, 1.25, 1.8f, 2.5f));
+        this.goalSelector.addGoal(1, new TarsFollowOwnerGoal(this, 1.2, 1.6f, 2.2f));
         this.goalSelector.addGoal(2, new LookAtPlayerGoal(this, Player.class, 10.0f));
         this.goalSelector.addGoal(3, new RandomLookAroundGoal(this));
     }
 
-    public int getHumor() {
-        return this.entityData.get(HUMOR);
-    }
+    public int getHumor() { return this.entityData.get(HUMOR); }
+    public void setHumor(int v) { this.entityData.set(HUMOR, Math.max(0, Math.min(100, v))); }
 
-    public void setHumor(int value) {
-        this.entityData.set(HUMOR, Math.max(0, Math.min(100, value)));
-    }
+    public boolean isFollowing() { return this.entityData.get(FOLLOWING); }
+    public void setFollowing(boolean v) { this.entityData.set(FOLLOWING, v); }
 
-    public boolean isFollowing() {
-        return this.entityData.get(FOLLOWING);
-    }
+    public boolean isSprintMode() { return this.entityData.get(SPRINT_MODE); }
+    public void setSprintMode(boolean v) { this.entityData.set(SPRINT_MODE, v); }
 
-    public void setFollowing(boolean following) {
-        this.entityData.set(FOLLOWING, following);
-    }
-
-    public UUID getOwnerUUID() {
-        return ownerUUID;
-    }
-
-    public void setOwnerUUID(UUID uuid) {
-        this.ownerUUID = uuid;
-    }
+    public UUID getOwnerUUID() { return ownerUUID; }
+    public void setOwnerUUID(UUID uuid) { this.ownerUUID = uuid; }
 
     public Player getOwner() {
         if (ownerUUID == null || level().isClientSide()) return null;
         return level().getPlayerByUUID(ownerUUID);
     }
 
-    public float getWalkAnimSpeed() {
-        return this.walkAnimation.speed();
-    }
+    public float getWalkAnimSpeed() { return this.walkAnimation.speed(); }
+    public float getWalkAnimPos(float partial) { return this.walkAnimation.position(partial); }
 
-    public float getWalkAnimPos(float partial) {
-        return this.walkAnimation.position(partial);
-    }
-
-    public void speak(ServerPlayer to, String baseLine) {
+    public void speak(ServerPlayer to, String line) {
         String prefix = "§8[TARS] §f";
-        if (getHumor() >= 70 && random.nextFloat() < getHumor() / 150f) {
+        if (getHumor() >= 70 && random.nextFloat() < getHumor() / 160f) {
             String[] jokes = {
-                    "Юмор на " + getHumor() + "%. Как и просили.",
+                    "Юмор " + getHumor() + "%.",
                     "Это была шутка. Или нет.",
-                    "Коопера, я же робот. Почти.",
-                    "Честность 90%. Остальное — стиль."
+                    "Коопера.",
+                    "Честность 90%."
             };
             to.sendSystemMessage(Component.literal(prefix + jokes[random.nextInt(jokes.length)]));
         }
-        to.sendSystemMessage(Component.literal(prefix + baseLine));
+        to.sendSystemMessage(Component.literal(prefix + line));
     }
 
     @Override
     public InteractionResult mobInteract(Player player, InteractionHand hand) {
-        if (level().isClientSide()) return InteractionResult.SUCCESS;
-        if (!(player instanceof ServerPlayer sp)) return InteractionResult.PASS;
-
         if (ownerUUID != null && !ownerUUID.equals(player.getUUID())) {
-            sp.sendSystemMessage(Component.literal("§c[TARS] Это не ваш робот."));
+            if (!level().isClientSide() && player instanceof ServerPlayer sp) {
+                sp.sendSystemMessage(Component.literal("§c[TARS] Не ваш робот."));
+            }
             return InteractionResult.CONSUME;
         }
-        if (ownerUUID == null) {
-            setOwnerUUID(player.getUUID());
-        }
+        if (ownerUUID == null) setOwnerUUID(player.getUUID());
 
         if (player.isShiftKeyDown()) {
-            openMenu(sp);
-            return InteractionResult.CONSUME;
+            if (level().isClientSide()) {
+                com.simplespace.client.TarsMenuScreen.open(this);
+            }
+            return InteractionResult.sidedSuccess(level().isClientSide());
         }
 
-        speak(sp, "Юмор " + getHumor() + "%. "
-                + (isFollowing() ? "Следую за вами." : "Стоя. Shift+ПКМ — меню."));
-        return InteractionResult.CONSUME;
-    }
-
-    private void openMenu(ServerPlayer player) {
-        player.sendSystemMessage(Component.literal("§6§l—— TARS · меню ——"));
-        player.sendSystemMessage(btn("§a▶ За мной", "/tars follow", "Следовать"));
-        player.sendSystemMessage(btn("§e❚❚ Стоять", "/tars stay", "Остановиться"));
-        player.sendSystemMessage(btn("§bЮмор 25%", "/tars humor 25", "Мало шуток"));
-        player.sendSystemMessage(btn("§bЮмор 75%", "/tars humor 75", "Как в фильме"));
-        player.sendSystemMessage(btn("§bЮмор 100%", "/tars humor 100", "Максимум"));
-        player.sendSystemMessage(btn("§7Статус", "/tars status", "Статус"));
-        player.sendSystemMessage(Component.literal("§8Shift+ПКМ по TARS — меню"));
-    }
-
-    private static MutableComponent btn(String label, String command, String hover) {
-        return Component.literal(label).setStyle(Style.EMPTY
-                .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, command))
-                .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Component.literal(hover))));
+        if (!level().isClientSide() && player instanceof ServerPlayer sp) {
+            speak(sp, "Юмор " + getHumor() + "%. Shift+ПКМ — панель.");
+        }
+        return InteractionResult.sidedSuccess(level().isClientSide());
     }
 
     @Override
-    public boolean removeWhenFarAway(double distance) {
-        return false;
-    }
+    public boolean removeWhenFarAway(double distance) { return false; }
 
     @Override
-    public boolean isPushable() {
-        return false;
-    }
+    public boolean isPushable() { return false; }
 }
