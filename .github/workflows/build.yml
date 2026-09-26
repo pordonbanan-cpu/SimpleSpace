@@ -18,250 +18,26 @@ jobs:
           fi
           chmod +x gradlew || true
 
-      - name: Apply fixes
+      - name: Apply all fixes
         run: |
+          cp fixes/SpacePhysicsHandler.java src/main/java/com/simplespace/event/
           cp fixes/SpacePlanetSpawner.java src/main/java/com/simplespace/event/
           cp fixes/SpaceTransitionHandler.java src/main/java/com/simplespace/event/
+          cp fixes/ModDimensions.java src/main/java/com/simplespace/dimension/
+          cp fixes/CelestialBodyRenderer.java src/main/java/com/simplespace/client/
+          cp fixes/SpaceDimensionEffects.java src/main/java/com/simplespace/client/
+          cp fixes/ModEntities.java src/main/java/com/simplespace/entity/
+          cp fixes/SimpleSpace.java src/main/java/com/simplespace/
+          cp fixes/SpaceCommands.java src/main/java/com/simplespace/command/
           cp fixes/space.json src/main/resources/data/simplespace/dimension_type/
+          mkdir -p src/main/resources/data/simplespace/dimension_type
+          mkdir -p src/main/resources/data/simplespace/dimension
+          mkdir -p src/main/resources/data/simplespace/worldgen/biome
+          cp fixes/moon_type.json src/main/resources/data/simplespace/dimension_type/moon.json
+          cp fixes/moon_dim.json src/main/resources/data/simplespace/dimension/moon.json
+          cp fixes/moon_wastes.json src/main/resources/data/simplespace/worldgen/biome/moon_wastes.json
 
-          cat > src/main/java/com/simplespace/client/SpaceDimensionEffects.java << 'EOF'
-          package com.simplespace.client;
-
-          import net.minecraft.client.renderer.DimensionSpecialEffects;
-          import net.minecraft.world.phys.Vec3;
-
-          public class SpaceDimensionEffects extends DimensionSpecialEffects {
-
-              public SpaceDimensionEffects() {
-                  // NORMAL sky = night stars at fixed midnight (not End)
-                  super(Float.NaN, false, SkyType.NORMAL, false, false);
-              }
-
-              @Override
-              public Vec3 getBrightnessDependentFogColor(Vec3 fogColor, float brightness) {
-                  return new Vec3(0.0, 0.0, 0.0);
-              }
-
-              @Override
-              public boolean isFoggyAt(int x, int y) {
-                  return false;
-              }
-          }
-          EOF
-
-          cat > src/main/java/com/simplespace/client/CelestialBodyRenderer.java << 'EOF'
-          package com.simplespace.client;
-
-          import com.mojang.blaze3d.vertex.PoseStack;
-          import com.mojang.blaze3d.vertex.VertexConsumer;
-          import com.simplespace.entity.CelestialBodyEntity;
-          import net.minecraft.client.renderer.MultiBufferSource;
-          import net.minecraft.client.renderer.RenderType;
-          import net.minecraft.client.renderer.entity.EntityRenderer;
-          import net.minecraft.client.renderer.entity.EntityRendererProvider;
-          import net.minecraft.client.renderer.texture.OverlayTexture;
-          import net.minecraft.resources.ResourceLocation;
-          import net.minecraft.util.Mth;
-          import org.joml.Matrix4f;
-
-          public class CelestialBodyRenderer extends EntityRenderer<CelestialBodyEntity> {
-
-              private static final ResourceLocation SUN =
-                      ResourceLocation.fromNamespaceAndPath("simplespace", "textures/entity/sun.png");
-              private static final ResourceLocation EARTH =
-                      ResourceLocation.fromNamespaceAndPath("simplespace", "textures/entity/earth.png");
-              private static final ResourceLocation MOON =
-                      ResourceLocation.fromNamespaceAndPath("simplespace", "textures/entity/moon.png");
-
-              private static final int RINGS = 24;
-              private static final int SEGMENTS = 24;
-
-              public CelestialBodyRenderer(EntityRendererProvider.Context context) {
-                  super(context);
-                  this.shadowRadius = 0;
-              }
-
-              @Override
-              public ResourceLocation getTextureLocation(CelestialBodyEntity entity) {
-                  String name = entity.getType().toShortString();
-                  if (name.contains("sun")) return SUN;
-                  if (name.contains("earth")) return EARTH;
-                  return MOON;
-              }
-
-              @Override
-              public void render(CelestialBodyEntity entity, float yaw, float pt,
-                                 PoseStack pose, MultiBufferSource buffers, int light) {
-                  pose.pushPose();
-                  float radius = entity.getBbWidth() * 0.5f;
-                  pose.scale(radius, radius, radius);
-                  ResourceLocation tex = getTextureLocation(entity);
-                  VertexConsumer vc = buffers.getBuffer(RenderType.entitySolid(tex));
-                  int packedLight = 0xF000F0;
-                  Matrix4f mat = pose.last().pose();
-                  for (int i = 0; i < RINGS; i++) {
-                      float v0 = (float) i / RINGS;
-                      float v1 = (float) (i + 1) / RINGS;
-                      float lat0 = (float) (Math.PI * (v0 - 0.5));
-                      float lat1 = (float) (Math.PI * (v1 - 0.5));
-                      float y0 = Mth.sin(lat0);
-                      float y1 = Mth.sin(lat1);
-                      float r0 = Mth.cos(lat0);
-                      float r1 = Mth.cos(lat1);
-                      for (int j = 0; j < SEGMENTS; j++) {
-                          float u0 = (float) j / SEGMENTS;
-                          float u1 = (float) (j + 1) / SEGMENTS;
-                          float lng0 = (float) (2 * Math.PI * u0);
-                          float lng1 = (float) (2 * Math.PI * u1);
-                          float x0 = r0 * Mth.cos(lng0);
-                          float z0 = r0 * Mth.sin(lng0);
-                          float x1 = r0 * Mth.cos(lng1);
-                          float z1 = r0 * Mth.sin(lng1);
-                          float x2 = r1 * Mth.cos(lng1);
-                          float z2 = r1 * Mth.sin(lng1);
-                          float x3 = r1 * Mth.cos(lng0);
-                          float z3 = r1 * Mth.sin(lng0);
-                          vert(vc, mat, x0, y0, z0, u0, v0, packedLight);
-                          vert(vc, mat, x3, y1, z3, u0, v1, packedLight);
-                          vert(vc, mat, x2, y1, z2, u1, v1, packedLight);
-                          vert(vc, mat, x0, y0, z0, u0, v0, packedLight);
-                          vert(vc, mat, x2, y1, z2, u1, v1, packedLight);
-                          vert(vc, mat, x1, y0, z1, u1, v0, packedLight);
-                      }
-                  }
-                  pose.popPose();
-                  super.render(entity, yaw, pt, pose, buffers, light);
-              }
-
-              private static void vert(VertexConsumer vc, Matrix4f mat,
-                                       float x, float y, float z, float u, float v, int light) {
-                  vc.addVertex(mat, x, y, z)
-                          .setColor(255, 255, 255, 255)
-                          .setUv(u, v)
-                          .setOverlay(OverlayTexture.NO_OVERLAY)
-                          .setLight(light)
-                          .setNormal(x, y, z);
-              }
-          }
-          EOF
-
-          cat > src/main/java/com/simplespace/command/SpaceCommands.java << 'EOF'
-          package com.simplespace.command;
-
-          import com.mojang.brigadier.CommandDispatcher;
-          import com.simplespace.dimension.ModDimensions;
-          import com.simplespace.event.SpacePlanetSpawner;
-          import com.simplespace.event.SpaceTransitionHandler;
-          import net.minecraft.commands.CommandSourceStack;
-          import net.minecraft.commands.Commands;
-          import net.minecraft.network.chat.Component;
-          import net.minecraft.server.level.ServerLevel;
-          import net.minecraft.server.level.ServerPlayer;
-          import net.minecraft.world.level.Level;
-
-          public class SpaceCommands {
-
-              public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
-                  dispatcher.register(Commands.literal("space")
-                      .requires(source -> source.hasPermission(0))
-                      .executes(context -> {
-                          ServerPlayer player = context.getSource().getPlayerOrException();
-                          ServerLevel space = player.server.getLevel(ModDimensions.SPACE_LEVEL);
-                          if (space != null) {
-                              player.teleportTo(space,
-                                      SpaceTransitionHandler.SPACE_SPAWN_X,
-                                      SpaceTransitionHandler.SPACE_SPAWN_Y,
-                                      SpaceTransitionHandler.SPACE_SPAWN_Z,
-                                      180f, 25f);
-                              SpacePlanetSpawner.ensurePlanets(space);
-                              context.getSource().sendSuccess(() -> Component.literal("§bПереход в космос"), false);
-                              return 1;
-                          }
-                          context.getSource().sendFailure(Component.literal("Измерение космоса не найдено"));
-                          return 0;
-                      })
-                  );
-
-                  dispatcher.register(Commands.literal("overworld")
-                      .requires(source -> source.hasPermission(0))
-                      .executes(context -> {
-                          ServerPlayer player = context.getSource().getPlayerOrException();
-                          ServerLevel overworld = player.server.getLevel(Level.OVERWORLD);
-                          if (overworld != null) {
-                              player.teleportTo(overworld, player.getX(), 120, player.getZ(),
-                                      player.getYRot(), player.getXRot());
-                              context.getSource().sendSuccess(() -> Component.literal("§aВозврат в обычный мир"), false);
-                              return 1;
-                          }
-                          return 0;
-                      })
-                  );
-
-                  dispatcher.register(Commands.literal("spawnplanets")
-                      .requires(source -> source.hasPermission(0))
-                      .executes(context -> {
-                          ServerPlayer player = context.getSource().getPlayerOrException();
-                          if (player.level() instanceof ServerLevel level
-                                  && level.dimension() == ModDimensions.SPACE_LEVEL) {
-                              SpacePlanetSpawner.forceRespawn(level);
-                              context.getSource().sendSuccess(() -> Component.literal("§eПланеты пересозданы"), false);
-                              return 1;
-                          }
-                          context.getSource().sendFailure(Component.literal("Нужно быть в космосе"));
-                          return 0;
-                      })
-                  );
-              }
-          }
-          EOF
-
-          cat > src/main/java/com/simplespace/entity/ModEntities.java << 'EOF'
-          package com.simplespace.entity;
-
-          import com.simplespace.SimpleSpace;
-          import net.minecraft.core.registries.Registries;
-          import net.minecraft.world.entity.EntityType;
-          import net.minecraft.world.entity.MobCategory;
-          import net.neoforged.bus.api.IEventBus;
-          import net.neoforged.neoforge.registries.DeferredRegister;
-          import net.neoforged.neoforge.registries.DeferredHolder;
-
-          public class ModEntities {
-
-              public static final DeferredRegister<EntityType<?>> ENTITIES =
-                      DeferredRegister.create(Registries.ENTITY_TYPE, SimpleSpace.MOD_ID);
-
-              public static final DeferredHolder<EntityType<?>, EntityType<CelestialBodyEntity>> SUN =
-                      ENTITIES.register("sun", () -> EntityType.Builder
-                              .<CelestialBodyEntity>of(CelestialBodyEntity::new, MobCategory.MISC)
-                              .sized(80.0f, 80.0f)
-                              .clientTrackingRange(512)
-                              .updateInterval(Integer.MAX_VALUE)
-                              .build("sun"));
-
-              public static final DeferredHolder<EntityType<?>, EntityType<CelestialBodyEntity>> EARTH =
-                      ENTITIES.register("earth", () -> EntityType.Builder
-                              .<CelestialBodyEntity>of(CelestialBodyEntity::new, MobCategory.MISC)
-                              .sized(24.0f, 24.0f)
-                              .clientTrackingRange(256)
-                              .updateInterval(Integer.MAX_VALUE)
-                              .build("earth"));
-
-              public static final DeferredHolder<EntityType<?>, EntityType<CelestialBodyEntity>> MOON =
-                      ENTITIES.register("moon", () -> EntityType.Builder
-                              .<CelestialBodyEntity>of(CelestialBodyEntity::new, MobCategory.MISC)
-                              .sized(8.0f, 8.0f)
-                              .clientTrackingRange(256)
-                              .updateInterval(Integer.MAX_VALUE)
-                              .build("moon"));
-
-              public static void register(IEventBus bus) {
-                  ENTITIES.register(bus);
-              }
-          }
-          EOF
-
-      - name: Generate textures
+      - name: Generate circular textures
         run: |
           python3 << 'PY'
           from pathlib import Path
@@ -282,31 +58,49 @@ jobs:
 
           out = Path('src/main/resources/assets/simplespace/textures/entity')
           out.mkdir(parents=True, exist_ok=True)
+          SIZE = 128
+
+          def disc_mask(x, y, w, h):
+              cx, cy = (w-1)/2, (h-1)/2
+              d = math.sqrt((x-cx)**2 + (y-cy)**2) / (w/2)
+              if d > 1.0: return None
+              edge = max(0, min(1, (1.0 - d) * 8))
+              return d, edge
 
           def sun(x,y,w,h):
-              u,v = x/w, y/h
-              d = math.sqrt((u-0.5)**2+(v-0.5)**2)*2
-              heat = max(0, 1-d*0.7)
-              n = ((x*17+y*31)&15)
-              return min(255,255+n), min(255,int(180+60*heat)+n//2), int(40+40*heat), 255
+              m = disc_mask(x,y,w,h)
+              if m is None: return 0,0,0,0
+              d, edge = m
+              heat = max(0, 1-d*0.9)
+              return 255, int(200+55*heat), int(60+80*heat), int(255*edge)
 
           def earth(x,y,w,h):
+              m = disc_mask(x,y,w,h)
+              if m is None: return 0,0,0,0
+              d, edge = m
+              shade = 0.55 + 0.45 * max(0, 1-d)
               v = y/h
-              hsh = ((x*13) ^ (y*7) ^ ((x//8)*(y//8)*19)) & 255
-              if v < 0.12 or v > 0.88: return 240,240,250,255
-              if hsh > 140: return 40+hsh//8, 100+hsh//6, 40, 255
-              return 20, 60+hsh//10, 160+hsh//8, 255
+              hsh = ((x*13) ^ (y*7) ^ ((x//6)*(y//6)*19)) & 255
+              if v < 0.15 or v > 0.85: r,g,b = 230,230,245
+              elif hsh > 145: r,g,b = 50+hsh//10, 110+hsh//8, 45
+              else: r,g,b = 25, 70+hsh//12, 170+hsh//10
+              return int(r*shade), int(g*shade), int(b*shade), int(255*edge)
 
           def moon(x,y,w,h):
-              hsh = ((x*11) ^ (y*13) ^ ((x//6)*(y//6)*23)) & 255
-              base = 140 + (hsh % 40)
-              c = 80 if hsh > 230 else base
-              return c, c, c+10, 255
+              m = disc_mask(x,y,w,h)
+              if m is None: return 0,0,0,0
+              d, edge = m
+              shade = 0.5 + 0.5 * max(0, 1-d)
+              hsh = ((x*11) ^ (y*13) ^ ((x//5)*(y//5)*23)) & 255
+              base = 130 + (hsh % 50)
+              if hsh > 220: base = 80
+              c = int(base * shade)
+              return c, c, min(255,c+12), int(255*edge)
 
-          write_png(out/'sun.png', 64, 64, sun)
-          write_png(out/'earth.png', 64, 64, earth)
-          write_png(out/'moon.png', 64, 64, moon)
-          print('ok')
+          write_png(out/'sun.png', SIZE, SIZE, sun)
+          write_png(out/'earth.png', SIZE, SIZE, earth)
+          write_png(out/'moon.png', SIZE, SIZE, moon)
+          print('textures ok')
           PY
 
       - uses: actions/setup-java@v4
