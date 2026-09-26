@@ -11,30 +11,41 @@
         "visible_bounds_offset": [0, 1.5, 0]
       },
       "bones": [
-        { "name": "root", "pivot": [0, 0, 0] },
+        {
+          "name": "root",
+          "pivot": [0, 16.5, -0.5]
+        },
         {
           "name": "module4",
           "parent": "root",
           "pivot": [-6, 16.5, -0.5],
-          "cubes": [ { "origin": [-8, 0, -3], "size": [4, 33, 5], "uv": [21, 1] } ]
+          "cubes": [
+            { "origin": [-8, 0, -3], "size": [4, 33, 5], "uv": [21, 1] }
+          ]
         },
         {
           "name": "module3",
           "parent": "root",
           "pivot": [-2, 16.5, -0.5],
-          "cubes": [ { "origin": [-4, 0, -3], "size": [4, 33, 5], "uv": [1, 1] } ]
+          "cubes": [
+            { "origin": [-4, 0, -3], "size": [4, 33, 5], "uv": [1, 1] }
+          ]
         },
         {
           "name": "module2",
           "parent": "root",
           "pivot": [2, 16.5, -0.5],
-          "cubes": [ { "origin": [0, 0, -3], "size": [4, 33, 5], "uv": [1, 40] } ]
+          "cubes": [
+            { "origin": [0, 0, -3], "size": [4, 33, 5], "uv": [1, 40] }
+          ]
         },
         {
           "name": "module1",
           "parent": "root",
           "pivot": [6, 16.5, -0.5],
-          "cubes": [ { "origin": [4, 0, -3], "size": [4, 33, 5], "uv": [21, 40] } ]
+          "cubes": [
+            { "origin": [4, 0, -3], "size": [4, 33, 5], "uv": [21, 40] }
+          ]
         }
       ]
     }
