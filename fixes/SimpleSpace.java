@@ -6,6 +6,7 @@ import com.simplespace.entity.ModEntities;
 import com.simplespace.event.SpacePhysicsHandler;
 import com.simplespace.event.SpacePlanetSpawner;
 import com.simplespace.event.SpaceTransitionHandler;
+import com.simplespace.item.ModItems;
 import com.simplespace.tars.TarsEntity;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
@@ -24,6 +25,7 @@ public class SimpleSpace {
 
     public SimpleSpace(IEventBus modEventBus) {
         ModEntities.register(modEventBus);
+        ModItems.register(modEventBus);
 
         modEventBus.addListener(this::commonSetup);
         modEventBus.addListener(this::clientSetup);
