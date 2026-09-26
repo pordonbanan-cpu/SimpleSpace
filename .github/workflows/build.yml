@@ -20,24 +20,25 @@ jobs:
 
       - name: Apply all fixes
         run: |
-          cp fixes/SpacePhysicsHandler.java src/main/java/com/simplespace/event/
-          cp fixes/SpacePlanetSpawner.java src/main/java/com/simplespace/event/
-          cp fixes/SpaceTransitionHandler.java src/main/java/com/simplespace/event/
-          cp fixes/ModDimensions.java src/main/java/com/simplespace/dimension/
-          cp fixes/CelestialBodyRenderer.java src/main/java/com/simplespace/client/
+          cp fixes/SpacePhysicsHandler.java src/main/java/com/simplespace/event/ 2>/dev/null || true
+          cp fixes/SpacePlanetSpawner.java src/main/java/com/simplespace/event/ 2>/dev/null || true
+          cp fixes/SpaceTransitionHandler.java src/main/java/com/simplespace/event/ 2>/dev/null || true
+          cp fixes/ModDimensions.java src/main/java/com/simplespace/dimension/ 2>/dev/null || true
+          cp fixes/CelestialBodyRenderer.java src/main/java/com/simplespace/client/ 2>/dev/null || true
           cp fixes/SpaceDimensionEffects.java src/main/java/com/simplespace/client/
-          cp fixes/ModEntities.java src/main/java/com/simplespace/entity/
-          cp fixes/SimpleSpace.java src/main/java/com/simplespace/
-          cp fixes/SpaceCommands.java src/main/java/com/simplespace/command/
-          cp fixes/space.json src/main/resources/data/simplespace/dimension_type/
+          cp fixes/SpaceSkyRenderer.java src/main/java/com/simplespace/client/
+          cp fixes/ModEntities.java src/main/java/com/simplespace/entity/ 2>/dev/null || true
+          cp fixes/SimpleSpace.java src/main/java/com/simplespace/ 2>/dev/null || true
+          cp fixes/SpaceCommands.java src/main/java/com/simplespace/command/ 2>/dev/null || true
           mkdir -p src/main/resources/data/simplespace/dimension_type
           mkdir -p src/main/resources/data/simplespace/dimension
           mkdir -p src/main/resources/data/simplespace/worldgen/biome
-          cp fixes/moon_type.json src/main/resources/data/simplespace/dimension_type/moon.json
-          cp fixes/moon_dim.json src/main/resources/data/simplespace/dimension/moon.json
-          cp fixes/moon_wastes.json src/main/resources/data/simplespace/worldgen/biome/moon_wastes.json
+          cp fixes/space.json src/main/resources/data/simplespace/dimension_type/ 2>/dev/null || true
+          cp fixes/moon_type.json src/main/resources/data/simplespace/dimension_type/moon.json 2>/dev/null || true
+          cp fixes/moon_dim.json src/main/resources/data/simplespace/dimension/moon.json 2>/dev/null || true
+          cp fixes/moon_wastes.json src/main/resources/data/simplespace/worldgen/biome/moon_wastes.json 2>/dev/null || true
 
-      - name: Generate circular textures
+      - name: Generate textures
         run: |
           python3 << 'PY'
           from pathlib import Path
@@ -56,6 +57,7 @@ jobs:
               data = b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', ihdr) + chunk(b'IDAT', zlib.compress(bytes(raw), 9)) + chunk(b'IEND', b'')
               Path(path).write_bytes(data)
 
+          # Planet discs
           out = Path('src/main/resources/assets/simplespace/textures/entity')
           out.mkdir(parents=True, exist_ok=True)
           SIZE = 128
@@ -100,7 +102,35 @@ jobs:
           write_png(out/'sun.png', SIZE, SIZE, sun)
           write_png(out/'earth.png', SIZE, SIZE, earth)
           write_png(out/'moon.png', SIZE, SIZE, moon)
-          print('textures ok')
+
+          # Milky way
+          sky = Path('src/main/resources/assets/simplespace/textures/sky')
+          sky.mkdir(parents=True, exist_ok=True)
+
+          def milky(x, y, w, h):
+              v = y / (h - 1)
+              dist = abs(v - 0.5) * 2
+              base = max(0, 1 - dist ** 1.2)
+              n = 0
+              for scale, amp in [(1, 0.5), (2, 0.3), (4, 0.2), (8, 0.15)]:
+                  nx = int(x * scale / 8)
+                  ny = int(y * scale / 4)
+                  hsh = ((nx * 374761393 + ny * 668265263) ^ (nx * ny * 127)) & 0xFFFF
+                  n += (hsh / 65535.0 - 0.5) * amp
+              density = max(0, min(1, base * 0.85 + n * 0.4 * base))
+              r = int(180 + 40 * density)
+              g = int(185 + 40 * density)
+              b = int(220 + 25 * density)
+              a = int(40 + 160 * density)
+              if density > 0.6 and ((x * 17 + y * 31) & 63) < 3:
+                  a = min(255, a + 60)
+                  r = min(255, r + 30)
+                  g = min(255, g + 30)
+                  b = min(255, b + 20)
+              return r, g, b, a
+
+          write_png(sky/'milky_way.png', 256, 64, milky)
+          print('all textures ok')
           PY
 
       - uses: actions/setup-java@v4
