@@ -26,6 +26,8 @@ public class TarsCommands {
                 .then(Commands.literal("stay").executes(ctx -> order(ctx.getSource(), "stay")))
                 .then(Commands.literal("sprint").executes(ctx -> order(ctx.getSource(), "sprint")))
                 .then(Commands.literal("status").executes(ctx -> order(ctx.getSource(), "status")))
+                .then(Commands.literal("dock").executes(ctx -> order(ctx.getSource(), "dock")))
+                .then(Commands.literal("undock").executes(ctx -> order(ctx.getSource(), "undock")))
                 .then(Commands.literal("give").executes(ctx -> give(ctx.getSource())))
                 .then(Commands.literal("collect")
                     .then(Commands.argument("mode", StringArgumentType.word())
@@ -85,21 +87,34 @@ public class TarsCommands {
         if (t.getOwnerUUID() == null) t.setOwnerUUID(p.getUUID());
         switch (kind) {
             case "follow" -> {
+                t.setDockOrdered(false);
                 t.setMiningOrdered(false);
                 t.setFollowing(true); t.setSprintMode(false); t.clearGoToTarget(false);
                 t.speak(p, "Иду за вами.");
             }
             case "stay" -> {
+                t.setDockOrdered(false);
                 t.setMiningOrdered(false);
                 t.setFollowing(false); t.setSprintMode(false); t.clearGoToTarget(false);
                 t.getNavigation().stop(); t.speak(p, "Стою.");
             }
             case "sprint" -> {
+                t.setDockOrdered(false);
                 t.setMiningOrdered(false);
                 t.setFollowing(true); t.setSprintMode(true); t.clearGoToTarget(false);
                 t.speak(p, "Перекат.");
             }
+            case "dock" -> {
+                t.setDockOrdered(true);
+                t.speak(p, "Иду в порт.");
+            }
+            case "undock" -> {
+                t.setDockOrdered(false);
+                t.setDocked(false);
+                t.speak(p, "Покинул порт.");
+            }
             case "status" -> t.speak(p, "L" + t.getFlashLevel() + ". Юмор " + t.getHumor() + "%. "
+                    + (t.isDocked() ? "В порту. " : (t.isDockOrdered() ? "Иду в порт. " : ""))
                     + (t.isFollowing() ? "Следую." : "Стою.")
                     + (t.isSprintMode() ? " Перекат." : "")
                     + " Склад: " + t.countItems() + " шт."
@@ -142,6 +157,7 @@ public class TarsCommands {
         TarsEntity t = nearest(p);
         if (t == null) { src.sendFailure(Component.literal("TARS не найден рядом.")); return 0; }
         if (t.getOwnerUUID() == null) t.setOwnerUUID(p.getUUID());
+        t.setDockOrdered(false);
         t.setGoToTarget(new BlockPos(x, y, z));
         t.speak(p, "Иду на " + x + " " + y + " " + z + ".");
         return 1;
