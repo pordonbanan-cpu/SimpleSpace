@@ -19,7 +19,6 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.FloatGoal;
 import net.minecraft.world.entity.ai.goal.RandomLookAroundGoal;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -34,6 +33,7 @@ import software.bernie.geckolib.animation.PlayState;
 import software.bernie.geckolib.animation.RawAnimation;
 import software.bernie.geckolib.util.GeckoLibUtil;
 
+import java.util.Locale;
 import java.util.UUID;
 
 public class TarsEntity extends PathfinderMob implements GeoEntity {
@@ -48,33 +48,36 @@ public class TarsEntity extends PathfinderMob implements GeoEntity {
             SynchedEntityData.defineId(TarsEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> FLASH_PROGRESS =
             SynchedEntityData.defineId(TarsEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Boolean> DIGGING =
+            SynchedEntityData.defineId(TarsEntity.class, EntityDataSerializers.BOOLEAN);
 
     public static final double AUTO_ROLL_DISTANCE = 14.0;
     public static final int FLASH_INSTALL_TICKS = 80;
+    public static final int ORE_SEARCH_RADIUS = 24;
 
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
     private UUID ownerUUID;
     private int jokeCooldown;
     private int walkSoundCooldown;
     private int rollSoundCooldown;
-    private int mineCooldown;
     private float lockedYRot = Float.NaN;
     private boolean wasMoving;
     private boolean autoSprintActive;
     private BlockPos goToTarget;
     private int pendingFlashLevel;
+    private boolean miningOrdered;
+    private String mineOreFilter;
 
     private static final RawAnimation IDLE = RawAnimation.begin().thenLoop("idle");
     private static final RawAnimation WALK = RawAnimation.begin().thenLoop("walk");
     private static final RawAnimation RUN = RawAnimation.begin().thenLoop("run");
+    private static final RawAnimation DIG = RawAnimation.begin().thenLoop("dig");
 
     private static final String[] JOKES = {
-            "Это была шутка.",
-            "Могу повторить с меньшей честностью.",
+            "Это была шутка.", "Могу повторить с меньшей честностью.",
             "Статистически вы должны были уже упасть.",
             "Я пересчитал. Всё ещё плохая идея.",
-            "Юмор включён. Результат… спорный.",
-            "Коопера. Снова.",
+            "Юмор включён. Результат… спорный.", "Коопера. Снова.",
             "Модули в норме. Ваш план — нет.",
             "Я не спорю. Я сообщаю вероятность.",
             "Если это приказ — он принят. Если шутка — она слабая.",
@@ -105,17 +108,22 @@ public class TarsEntity extends PathfinderMob implements GeoEntity {
         builder.define(SPRINT_MODE, false);
         builder.define(FLASH_LEVEL, 0);
         builder.define(FLASH_PROGRESS, 0);
+        builder.define(DIGGING, false);
     }
 
     @Override
     protected void registerGoals() {
         this.goalSelector.addGoal(0, new FloatGoal(this));
-        this.goalSelector.addGoal(1, new TarsGoToGoal(this, 1.3));
-        this.goalSelector.addGoal(2, new TarsFollowOwnerGoal(this, 1.25, 1.5f, 2.0f));
-        this.goalSelector.addGoal(3, new RandomLookAroundGoal(this) {
+        this.goalSelector.addGoal(1, new TarsMineGoal(this));
+        this.goalSelector.addGoal(2, new TarsGoToGoal(this, 1.3));
+        this.goalSelector.addGoal(3, new TarsFollowOwnerGoal(this, 1.25, 1.5f, 2.0f));
+        this.goalSelector.addGoal(4, new RandomLookAroundGoal(this) {
             @Override
             public boolean canUse() {
-                return !TarsEntity.this.isFollowing() && TarsEntity.this.getGoToTarget() == null && super.canUse();
+                return !TarsEntity.this.isFollowing()
+                        && TarsEntity.this.getGoToTarget() == null
+                        && !TarsEntity.this.isMiningOrdered()
+                        && super.canUse();
             }
         });
     }
@@ -126,12 +134,21 @@ public class TarsEntity extends PathfinderMob implements GeoEntity {
     public int getFlashLevel() { return this.entityData.get(FLASH_LEVEL); }
     public void setFlashLevel(int v) { this.entityData.set(FLASH_LEVEL, Math.max(0, Math.min(3, v))); }
     public int getFlashProgress() { return this.entityData.get(FLASH_PROGRESS); }
+    public boolean isDigging() { return this.entityData.get(DIGGING); }
+    public void setDigging(boolean v) { this.entityData.set(DIGGING, v); }
+    public boolean isMiningOrdered() { return miningOrdered; }
+    public void setMiningOrdered(boolean v) {
+        miningOrdered = v;
+        if (!v) { mineOreFilter = null; setDigging(false); }
+    }
+    public String getMineOreFilter() { return mineOreFilter; }
 
     public void setFollowing(boolean v) {
         boolean prev = isFollowing();
         this.entityData.set(FOLLOWING, v);
         if (v) {
             this.goToTarget = null;
+            this.miningOrdered = false;
             this.lockedYRot = Float.NaN;
             if (!prev && !level().isClientSide()) playLocal(SoundEvents.IRON_DOOR_OPEN, 0.6f, 1.3f);
         } else {
@@ -160,6 +177,7 @@ public class TarsEntity extends PathfinderMob implements GeoEntity {
             this.entityData.set(FOLLOWING, false);
             this.entityData.set(SPRINT_MODE, false);
             this.autoSprintActive = false;
+            this.miningOrdered = false;
             this.lockedYRot = Float.NaN;
             this.getNavigation().stop();
         }
@@ -209,13 +227,112 @@ public class TarsEntity extends PathfinderMob implements GeoEntity {
         level().playSound(null, getX(), getY(), getZ(), sound, SoundSource.NEUTRAL, vol, pitch);
     }
 
+    public static boolean matchesOreFilter(BlockState st, String filter) {
+        if (!isOre(st)) return false;
+        if (filter == null || filter.isEmpty()) return true;
+        String f = filter.toLowerCase(Locale.ROOT);
+        Block b = st.getBlock();
+        String key = b.getDescriptionId().toLowerCase(Locale.ROOT);
+        return switch (f) {
+            case "iron", "железо", "желез" -> st.is(BlockTags.IRON_ORES) || key.contains("iron");
+            case "coal", "уголь", "угл" -> st.is(BlockTags.COAL_ORES) || key.contains("coal");
+            case "gold", "золото", "золот" -> st.is(BlockTags.GOLD_ORES) || key.contains("gold");
+            case "diamond", "алмаз" -> st.is(BlockTags.DIAMOND_ORES) || key.contains("diamond");
+            case "copper", "медь", "мед" -> st.is(BlockTags.COPPER_ORES) || key.contains("copper");
+            case "redstone", "редстоун" -> st.is(BlockTags.REDSTONE_ORES) || key.contains("redstone");
+            case "lapis", "лазурит" -> st.is(BlockTags.LAPIS_ORES) || key.contains("lapis");
+            case "emerald", "изумруд" -> st.is(BlockTags.EMERALD_ORES) || key.contains("emerald");
+            case "quartz", "кварц" -> b == Blocks.NETHER_QUARTZ_ORE || key.contains("quartz");
+            case "debris", "незерит", "ancient" -> b == Blocks.ANCIENT_DEBRIS || key.contains("debris");
+            default -> key.contains(f);
+        };
+    }
+
+    public static boolean isOre(BlockState st) {
+        if (st.isAir()) return false;
+        if (st.is(BlockTags.COAL_ORES) || st.is(BlockTags.IRON_ORES) || st.is(BlockTags.COPPER_ORES)
+                || st.is(BlockTags.GOLD_ORES) || st.is(BlockTags.REDSTONE_ORES)
+                || st.is(BlockTags.LAPIS_ORES) || st.is(BlockTags.DIAMOND_ORES)
+                || st.is(BlockTags.EMERALD_ORES)) return true;
+        Block b = st.getBlock();
+        return b == Blocks.NETHER_QUARTZ_ORE || b == Blocks.NETHER_GOLD_ORE || b == Blocks.ANCIENT_DEBRIS;
+    }
+
+    public BlockPos findNearestOre(String filter) {
+        BlockPos origin = blockPosition();
+        BlockPos best = null;
+        double bestD = Double.MAX_VALUE;
+        int r = ORE_SEARCH_RADIUS;
+        for (int dx = -r; dx <= r; dx++) {
+            for (int dy = -8; dy <= 8; dy++) {
+                for (int dz = -r; dz <= r; dz++) {
+                    BlockPos p = origin.offset(dx, dy, dz);
+                    if (!matchesOreFilter(level().getBlockState(p), filter)) continue;
+                    double d = p.distSqr(origin);
+                    if (d < bestD) { bestD = d; best = p.immutable(); }
+                }
+            }
+        }
+        return best;
+    }
+
+    public static String parseOreType(String msg) {
+        String m = msg.toLowerCase(Locale.ROOT);
+        if (m.contains("алмаз") || m.contains("diamond")) return "diamond";
+        if (m.contains("желез") || m.contains("iron")) return "iron";
+        if (m.contains("золот") || m.contains("gold")) return "gold";
+        if (m.contains("угл") || m.contains("coal")) return "coal";
+        if (m.contains("мед") || m.contains("copper")) return "copper";
+        if (m.contains("редстоун") || m.contains("redstone")) return "redstone";
+        if (m.contains("лазурит") || m.contains("lapis")) return "lapis";
+        if (m.contains("изумруд") || m.contains("emerald")) return "emerald";
+        if (m.contains("кварц") || m.contains("quartz")) return "quartz";
+        if (m.contains("незерит") || m.contains("debris") || m.contains("ancient")) return "debris";
+        return null;
+    }
+
     public boolean handleVoiceCommand(ServerPlayer sp, String raw) {
         if (ownerUUID != null && !ownerUUID.equals(sp.getUUID())) return false;
         if (ownerUUID == null) setOwnerUUID(sp.getUUID());
 
-        String msg = raw.toLowerCase().trim();
+        String msg = raw.toLowerCase(Locale.ROOT).trim();
         if (msg.startsWith("tars ")) msg = msg.substring(5).trim();
         if (msg.startsWith("тарс ")) msg = msg.substring(5).trim();
+
+        if (containsAny(msg, "где ближайш", "где руда", "где руды", "nearest ore", "найди руд")) {
+            if (getFlashLevel() < 1) { speak(sp, "Нужен модуль L1+."); return true; }
+            String filter = parseOreType(msg);
+            BlockPos p = findNearestOre(filter);
+            if (p == null) speak(sp, filter == null ? "Руда рядом не найдена." : "Такая руда рядом не найдена.");
+            else speak(sp, "Ближайшая" + (filter != null ? " (" + filter + ")" : "")
+                    + ": " + p.getX() + " " + p.getY() + " " + p.getZ()
+                    + " §7(" + (int) Math.sqrt(p.distSqr(blockPosition())) + "м)");
+            return true;
+        }
+
+        if (containsAny(msg, "добудь", "добывай", "копай", "mine ", "добыть")) {
+            if (getFlashLevel() < 2) { speak(sp, "Для добычи нужен модуль L2+."); return true; }
+            mineOreFilter = parseOreType(msg);
+            miningOrdered = true;
+            setFollowing(false);
+            setSprintMode(false);
+            clearGoToTarget(false);
+            BlockPos p = findNearestOre(mineOreFilter);
+            if (p == null) {
+                miningOrdered = false;
+                speak(sp, "Руда для добычи не найдена.");
+            } else {
+                speak(sp, "Добываю" + (mineOreFilter != null ? " (" + mineOreFilter + ")" : "")
+                        + ". Цель: " + p.getX() + " " + p.getY() + " " + p.getZ());
+            }
+            return true;
+        }
+
+        if (containsAny(msg, "хватит копать", "стоп добыч", "не копай", "stop mine")) {
+            setMiningOrdered(false);
+            speak(sp, "Добыча остановлена.");
+            return true;
+        }
 
         Integer[] xyz = parseCoords(msg);
         if (xyz != null && (containsAny(msg, "иди", "go", "координат") || (countNumbers(msg) >= 3 && containsAny(msg, "на", "к")))) {
@@ -226,21 +343,19 @@ public class TarsEntity extends PathfinderMob implements GeoEntity {
         }
 
         if (containsAny(msg, "за мной", "следуй", "follow", "ко мне", "за мно")) {
+            setMiningOrdered(false);
             setFollowing(true); setSprintMode(false); clearGoToTarget(false);
             speak(sp, "Иду за вами."); return true;
         }
         if (containsAny(msg, "стой", "стоять", "стоп", "stay", "жди", "ждать")) {
+            setMiningOrdered(false);
             setFollowing(false); setSprintMode(false); clearGoToTarget(false);
             getNavigation().stop(); speak(sp, "Стою."); return true;
         }
         if (containsAny(msg, "беги", "перекат", "катись", "sprint", "roll", "бегом")) {
+            setMiningOrdered(false);
             setFollowing(true); setSprintMode(true); clearGoToTarget(false);
             speak(sp, "Перекат."); return true;
-        }
-        if (containsAny(msg, "копай", "добывай", "mine", "руда")) {
-            if (getFlashLevel() <= 0) speak(sp, "Модуль добычи не установлен. Нужна флешка.");
-            else speak(sp, "Сканер руд L" + getFlashLevel() + " активен.");
-            return true;
         }
         return false;
     }
@@ -276,9 +391,9 @@ public class TarsEntity extends PathfinderMob implements GeoEntity {
         orientBody();
         tickAutoRoll();
         tickFlashInstall();
-        tickMining();
         tickMovementSounds();
         tickJokes();
+        if (!miningOrdered && isDigging() && random.nextInt(10) == 0) setDigging(false);
     }
 
     private void tickFlashInstall() {
@@ -300,54 +415,15 @@ public class TarsEntity extends PathfinderMob implements GeoEntity {
 
     public static String flashDesc(int level) {
         return switch (level) {
-            case 1 -> "Сканер руд (обнаружение).";
-            case 2 -> "Добыча руд в радиусе.";
-            case 3 -> "Ускоренная добыча, большой радиус.";
+            case 1 -> "Сканер руд.";
+            case 2 -> "Добыча руд.";
+            case 3 -> "Быстрая добыча.";
             default -> "Базовая прошивка.";
         };
     }
 
-    private void tickMining() {
-        int level = getFlashLevel();
-        if (level <= 0) return;
-        if (--mineCooldown > 0) return;
-        int radius = level == 1 ? 4 : (level == 2 ? 3 : 5);
-        mineCooldown = level == 3 ? 12 : 20;
-
-        BlockPos origin = blockPosition();
-        BlockPos found = null;
-        for (int dx = -radius; dx <= radius && found == null; dx++)
-            for (int dy = -2; dy <= 2 && found == null; dy++)
-                for (int dz = -radius; dz <= radius; dz++) {
-                    BlockPos p = origin.offset(dx, dy, dz);
-                    if (isOre(level().getBlockState(p))) { found = p; break; }
-                }
-
-        if (found == null) return;
-        if (level == 1) {
-            if (random.nextInt(5) == 0) {
-                Player o = getOwner();
-                if (o instanceof ServerPlayer sp && distanceToSqr(sp) < 32 * 32)
-                    speak(sp, "Руда: " + found.getX() + " " + found.getY() + " " + found.getZ());
-            }
-            return;
-        }
-        level().destroyBlock(found, true, this);
-        playLocal(SoundEvents.STONE_BREAK, 0.5f, 1.0f);
-    }
-
-    private static boolean isOre(BlockState st) {
-        if (st.isAir()) return false;
-        if (st.is(BlockTags.COAL_ORES) || st.is(BlockTags.IRON_ORES) || st.is(BlockTags.COPPER_ORES)
-                || st.is(BlockTags.GOLD_ORES) || st.is(BlockTags.REDSTONE_ORES)
-                || st.is(BlockTags.LAPIS_ORES) || st.is(BlockTags.DIAMOND_ORES)
-                || st.is(BlockTags.EMERALD_ORES)) return true;
-        Block b = st.getBlock();
-        return b == Blocks.NETHER_QUARTZ_ORE || b == Blocks.NETHER_GOLD_ORE || b == Blocks.ANCIENT_DEBRIS;
-    }
-
     private void tickAutoRoll() {
-        if (!isFollowing() || getGoToTarget() != null) return;
+        if (!isFollowing() || getGoToTarget() != null || miningOrdered) return;
         Player owner = getOwner();
         if (owner == null) return;
         double d = distanceTo(owner);
@@ -359,7 +435,7 @@ public class TarsEntity extends PathfinderMob implements GeoEntity {
     }
 
     private void orientBody() {
-        if (!isFollowing() && getGoToTarget() == null) {
+        if (!isFollowing() && getGoToTarget() == null && !miningOrdered) {
             if (!Float.isNaN(lockedYRot)) {
                 this.setYRot(lockedYRot); this.yBodyRot = lockedYRot; this.yHeadRot = lockedYRot;
             }
@@ -369,13 +445,14 @@ public class TarsEntity extends PathfinderMob implements GeoEntity {
         Vec3 motion = this.getDeltaMovement();
         double speed2 = motion.x * motion.x + motion.z * motion.z;
         boolean moving = speed2 > 0.0008 || !this.getNavigation().isDone();
-        if (moving) {
+
+        if (moving || miningOrdered) {
             double mx = motion.x, mz = motion.z;
             if (speed2 < 0.0001) {
                 if (getGoToTarget() != null) {
                     mx = getGoToTarget().getX() + 0.5 - getX();
                     mz = getGoToTarget().getZ() + 0.5 - getZ();
-                } else if (owner != null) {
+                } else if (owner != null && isFollowing()) {
                     mx = owner.getX() - getX(); mz = owner.getZ() - getZ();
                 }
             }
@@ -400,7 +477,7 @@ public class TarsEntity extends PathfinderMob implements GeoEntity {
                 rollSoundCooldown = 8;
                 playLocal(SoundEvents.ELYTRA_FLYING, 0.35f, 0.6f + random.nextFloat() * 0.15f);
             }
-        } else if (moving && (isFollowing() || getGoToTarget() != null)) {
+        } else if (moving && (isFollowing() || getGoToTarget() != null || miningOrdered)) {
             if (--walkSoundCooldown <= 0) {
                 walkSoundCooldown = 12 + random.nextInt(4);
                 playLocal(SoundEvents.IRON_GOLEM_STEP, 0.4f, 1.1f + random.nextFloat() * 0.2f);
@@ -437,14 +514,7 @@ public class TarsEntity extends PathfinderMob implements GeoEntity {
             return InteractionResult.CONSUME;
         }
         if (ownerUUID == null) setOwnerUUID(player.getUUID());
-
-        ItemStack held = player.getItemInHand(hand);
-        int flash = com.simplespace.item.ModItems.getFlashTier(held);
-        if (flash > 0 && !level().isClientSide() && player instanceof ServerPlayer sp) {
-            if (beginFlashInstall(flash, sp) && !player.getAbilities().instabuild) held.shrink(1);
-            return InteractionResult.SUCCESS;
-        }
-
+        // Flash ONLY via menu
         if (player.isShiftKeyDown()) {
             if (level().isClientSide()) com.simplespace.client.TarsMenuScreen.open(this);
             return InteractionResult.sidedSuccess(level().isClientSide());
@@ -458,7 +528,8 @@ public class TarsEntity extends PathfinderMob implements GeoEntity {
     }
 
     private PlayState predicate(AnimationState<TarsEntity> state) {
-        if (state.isMoving()) {
+        if (this.isDigging()) state.setAnimation(DIG);
+        else if (state.isMoving()) {
             if (this.isSprintMode()) state.setAnimation(RUN);
             else state.setAnimation(WALK);
         } else state.setAnimation(IDLE);
