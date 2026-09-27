@@ -44,7 +44,7 @@ if "tickTriggerLines" not in src:
     )
 
 if "public boolean hurt" not in src:
-    HURT = """
+    HURT = '''
     @Override
     public boolean hurt(DamageSource source, float amount) {
         if (getFlashLevel() >= 5) amount *= 0.55f;
@@ -83,6 +83,24 @@ if "public boolean hurt" not in src:
         wasDigging = dig;
     }
 
+    private static boolean isNumericToken(String s) {
+        if (s == null || s.isEmpty()) return false;
+        int i = 0;
+        if (s.charAt(0) == '-') {
+            if (s.length() == 1) return false;
+            i = 1;
+        }
+        boolean dot = false;
+        boolean digit = false;
+        for (; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c >= '0' && c <= '9') digit = true;
+            else if (c == '.' && !dot) dot = true;
+            else return false;
+        }
+        return digit;
+    }
+
     private static String extractPlaceName(String msg, String... prefixes) {
         String m = msg.toLowerCase(java.util.Locale.ROOT).trim();
         for (String p : prefixes) {
@@ -92,8 +110,9 @@ if "public boolean hurt" not in src:
                 if (rest.startsWith("место ")) rest = rest.substring(6).trim();
                 if (rest.isEmpty()) return null;
                 StringBuilder name = new StringBuilder();
-                for (String part : rest.split("\\s+")) {
-                    if (part.matches("-?\\d+(\\.\\d+)?")) break;
+                for (String part : rest.split(" ")) {
+                    if (part.isEmpty()) continue;
+                    if (isNumericToken(part)) break;
                     if (name.length() > 0) name.append(' ');
                     name.append(part);
                     if (name.length() > 24) break;
@@ -118,13 +137,13 @@ if "public boolean hurt" not in src:
         speak(sp, "Скан: враги " + hostiles + ", мирные " + passives + ", " + oreLine + ".");
     }
 
-"""
+'''
     src = src.replace(
         "    @Override\n    public void registerControllers",
         HURT + "\n    @Override\n    public void registerControllers",
     )
 
-MEM = """
+MEM = '''
         if (containsAny(msg, "запомни", "запомнить", "remember")) {
             String name = extractPlaceName(msg, "запомни", "запомнить", "remember");
             if (name == null || name.isBlank()) name = "точка";
@@ -157,7 +176,7 @@ MEM = """
             doEnvironmentScan(sp);
             return true;
         }
-"""
+'''
 
 if "rememberedPlaces.put" not in src:
     marker = 'speak(sp, "Сбор в склад: выкл.");\n            return true;\n        }'
