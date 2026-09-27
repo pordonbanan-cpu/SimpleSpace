@@ -6,13 +6,10 @@ import net.minecraft.world.Container;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraft.world.level.block.entity.HopperBlockEntity;
 import net.neoforged.fml.ModList;
 
 /**
- * Мягкая интеграция с Create / Aeronautics без жёсткой зависимости.
- * Create: выгрузка склада TARS в ближайшие контейнеры (сундук/воронка/depot через Container).
- * Aeronautics: заготовка под пилотирование — пока ответ «в разработке».
+ * Soft Create / Aeronautics bridge (no hard dependency).
  */
 public final class TarsCreateBridge {
 
@@ -26,7 +23,6 @@ public final class TarsCreateBridge {
         return ModList.get().isLoaded("aeronautics") || ModList.get().isLoaded("aeronautics_bundled");
     }
 
-    /** Выгрузить инвентарь TARS в ближайшие Container в радиусе. */
     public static int unloadToNearby(TarsEntity tars, int radius) {
         if (tars.level().isClientSide()) return 0;
         Level level = tars.level();
@@ -38,25 +34,13 @@ public final class TarsCreateBridge {
                 for (int dz = -radius; dz <= radius; dz++) {
                     BlockPos p = origin.offset(dx, dy, dz);
                     BlockEntity be = level.getBlockEntity(p);
-                    if (be == null) continue;
-                    Container inv = containerFrom(be);
-                    if (inv == null) continue;
+                    if (!(be instanceof Container inv)) continue;
                     moved += dumpInto(tars, inv);
                     if (tars.countItems() <= 0) return moved;
                 }
             }
         }
         return moved;
-    }
-
-    private static Container containerFrom(BlockEntity be) {
-        if (be instanceof Container c) return c;
-        // Hopper API helper works for many vanilla-like inventories
-        try {
-            return HopperBlockEntity.getContainerAt(be.getLevel(), be.getBlockPos());
-        } catch (Exception ignored) {
-            return null;
-        }
     }
 
     private static int dumpInto(TarsEntity tars, Container inv) {
@@ -113,14 +97,14 @@ public final class TarsCreateBridge {
             }
             int n = unloadToNearby(tars, 5);
             tars.speak(sp, n > 0
-                    ? "Передал " + n + " на ближайшие приёмники Create/контейнеры."
-                    : "Приёмник Create рядом не найден — подойдите ближе к depot/воронке.");
+                    ? "Передал " + n + " на ближайшие приёмники."
+                    : "Приёмник рядом не найден — подойдите к сундуку/depot.");
             return;
         }
 
         if (contains(m, "дирижабл", "аэронавт", "aeronaut", "борт", "пилот")) {
             if (!isAeronauticsLoaded()) {
-                tars.speak(sp, "Aeronautics не найден. Модуль пилотирования — заготовка.");
+                tars.speak(sp, "Aeronautics не найден. Пилотирование — заготовка.");
             } else {
                 tars.speak(sp, "Aeronautics: пилотирование и стыковка — в разработке. Порт готов.");
             }
