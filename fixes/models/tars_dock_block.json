@@ -1,0 +1,88 @@
+{
+  "parent": "minecraft:block/block",
+  "textures": {
+    "metal": "minecraft:block/iron_block",
+    "dark": "minecraft:block/blast_furnace_top",
+    "gold": "minecraft:block/gold_block",
+    "particle": "minecraft:block/iron_block"
+  },
+  "elements": [
+    {
+      "name": "floor",
+      "from": [0, 0, 0],
+      "to": [16, 3, 16],
+      "faces": {
+        "north": { "texture": "#metal" },
+        "east": { "texture": "#metal" },
+        "south": { "texture": "#metal" },
+        "west": { "texture": "#metal" },
+        "up": { "texture": "#dark" },
+        "down": { "texture": "#metal" }
+      }
+    },
+    {
+      "name": "left_rail",
+      "from": [0, 3, 0],
+      "to": [2, 28, 16],
+      "faces": {
+        "north": { "texture": "#metal" },
+        "east": { "texture": "#dark" },
+        "south": { "texture": "#metal" },
+        "west": { "texture": "#metal" },
+        "up": { "texture": "#gold" },
+        "down": { "texture": "#metal" }
+      }
+    },
+    {
+      "name": "right_rail",
+      "from": [14, 3, 0],
+      "to": [16, 28, 16],
+      "faces": {
+        "north": { "texture": "#metal" },
+        "east": { "texture": "#metal" },
+        "south": { "texture": "#metal" },
+        "west": { "texture": "#dark" },
+        "up": { "texture": "#gold" },
+        "down": { "texture": "#metal" }
+      }
+    },
+    {
+      "name": "back",
+      "from": [2, 3, 14],
+      "to": [14, 24, 16],
+      "faces": {
+        "north": { "texture": "#dark" },
+        "east": { "texture": "#metal" },
+        "south": { "texture": "#metal" },
+        "west": { "texture": "#metal" },
+        "up": { "texture": "#gold" },
+        "down": { "texture": "#metal" }
+      }
+    },
+    {
+      "name": "front_lip",
+      "from": [2, 3, 0],
+      "to": [14, 5, 2],
+      "faces": {
+        "north": { "texture": "#gold" },
+        "east": { "texture": "#metal" },
+        "south": { "texture": "#dark" },
+        "west": { "texture": "#metal" },
+        "up": { "texture": "#gold" },
+        "down": { "texture": "#metal" }
+      }
+    },
+    {
+      "name": "pad_center",
+      "from": [3, 3, 3],
+      "to": [13, 4, 13],
+      "faces": {
+        "up": { "texture": "#gold" },
+        "north": { "texture": "#gold" },
+        "east": { "texture": "#gold" },
+        "south": { "texture": "#gold" },
+        "west": { "texture": "#gold" }
+      }
+    }
+  ]
+}
