@@ -17,7 +17,7 @@ public class TarsDockGoal extends Goal {
 
     public TarsDockGoal(TarsEntity tars) {
         this.tars = tars;
-        this.setFlags(EnumSet.of(Flag.MOVE, Flag.LOOK));
+        this.setFlags(EnumSet.of(Flag.MOVE, Flag.LOOK, Flag.JUMP));
     }
 
     @Override
@@ -33,8 +33,7 @@ public class TarsDockGoal extends Goal {
         if (!tars.isDockOrdered()) return false;
         if (dock == null) return false;
         BlockState st = tars.level().getBlockState(dock);
-        if (!st.is(ModBlocks.TARS_DOCK.get())) return false;
-        return true;
+        return st.is(ModBlocks.TARS_DOCK.get());
     }
 
     @Override
@@ -50,6 +49,7 @@ public class TarsDockGoal extends Goal {
     @Override
     public void stop() {
         tars.getNavigation().stop();
+        tars.setNoGravity(false);
         if (!tars.isDockOrdered()) {
             tars.setDocked(false);
         }
@@ -59,14 +59,29 @@ public class TarsDockGoal extends Goal {
     @Override
     public void tick() {
         if (dock == null) return;
-        double dist = tars.distanceToSqr(dock.getX() + 0.5, dock.getY() + 0.25, dock.getZ() + 0.5);
 
-        if (dist <= 1.6) {
+        // Центр площадки, чуть выше пола (3/16 блока)
+        double tx = dock.getX() + 0.5;
+        double ty = dock.getY() + 0.20;
+        double tz = dock.getZ() + 0.45; // чуть к открытой стороне (север модели — front lip)
+
+        double dist = tars.distanceToSqr(tx, ty, tz);
+
+        if (dist <= 2.25) {
             tars.getNavigation().stop();
             tars.setDocked(true);
-            tars.setPos(dock.getX() + 0.5, dock.getY() + 0.25, dock.getZ() + 0.5);
-            tars.setYRot(tars.getYRot());
+            tars.setNoGravity(true);
             tars.setDeltaMovement(0, 0, 0);
+            tars.setPos(tx, ty, tz);
+            // Лицом к открытой стороне порта (юг → смотрит наружу с front lip)
+            tars.setYRot(180f);
+            tars.setYBodyRot(180f);
+            tars.setYHeadRot(180f);
+            tars.setXRot(0f);
+            tars.xxa = 0;
+            tars.zza = 0;
+            tars.setJumping(false);
+
             if (settleTicks++ == 5) {
                 var o = tars.getOwner();
                 if (o instanceof net.minecraft.server.level.ServerPlayer sp)
@@ -76,10 +91,16 @@ public class TarsDockGoal extends Goal {
         }
 
         tars.setDocked(false);
+        tars.setNoGravity(false);
         if (--recalc <= 0) {
-            recalc = 8;
+            recalc = 6;
+            // path к блоку рядом с портом, затем финальный snap
             Path path = tars.getNavigation().createPath(dock, 0);
-            if (path != null) tars.getNavigation().moveTo(path, 1.15);
+            if (path != null) {
+                tars.getNavigation().moveTo(path, 1.1);
+            } else {
+                tars.getNavigation().moveTo(tx, ty, tz, 1.1);
+            }
         }
     }
 
