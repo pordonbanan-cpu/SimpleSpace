@@ -1,8 +1,10 @@
 package com.simplespace.item;
 
 import com.simplespace.SimpleSpace;
+import com.simplespace.block.ModBlocks;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -30,6 +32,9 @@ public class ModItems {
     public static final DeferredHolder<Item, Item> FLASH_L5 =
             ITEMS.register("flash_l5", () -> new Item(new Item.Properties().stacksTo(16)));
 
+    public static final DeferredHolder<Item, Item> TARS_DOCK =
+            ITEMS.register("tars_dock", () -> new BlockItem(ModBlocks.TARS_DOCK.get(), new Item.Properties()));
+
     public static final DeferredHolder<CreativeModeTab, CreativeModeTab> TAB = TABS.register("main",
             () -> CreativeModeTab.builder()
                     .title(Component.literal("SimpleSpace"))
@@ -41,6 +46,7 @@ public class ModItems {
                         out.accept(FLASH_L3.get());
                         out.accept(FLASH_L4.get());
                         out.accept(FLASH_L5.get());
+                        out.accept(TARS_DOCK.get());
                     })
                     .build());
 
