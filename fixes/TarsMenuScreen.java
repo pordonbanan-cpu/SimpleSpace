@@ -13,7 +13,8 @@ public class TarsMenuScreen extends Screen {
 
     private final TarsEntity tars;
     private static final int PANEL_W = 250;
-    private static final int PANEL_H = 248;
+    private static final int PANEL_H = 268;
+
     private static final int GOLD = 0xFFC8A030;
     private static final int GOLD_DIM = 0xFF8A7020;
     private static final int GOLD_SOFT = 0x44C8A030;
@@ -38,7 +39,7 @@ public class TarsMenuScreen extends Screen {
     protected void init() {
         int cx = this.width / 2;
         int top = this.height / 2 - PANEL_H / 2 + 28;
-        int bw = 210, bh = 17, gap = 20;
+        int bw = 210, bh = 16, gap = 18;
 
         addRenderableWidget(goldBtn("▶  Следовать", cx - bw / 2, top, bw, bh, () -> runCmd("tars follow")));
         addRenderableWidget(goldBtn("❚❚  Стоять", cx - bw / 2, top + gap, bw, bh, () -> runCmd("tars stay")));
@@ -51,9 +52,9 @@ public class TarsMenuScreen extends Screen {
         int fieldW = 56;
         int fy = top + gap * 4 + 1;
         int fx = cx - bw / 2;
-        boxX = new EditBox(this.font, fx, fy, fieldW, 15, Component.literal("X"));
-        boxY = new EditBox(this.font, fx + fieldW + 6, fy, fieldW, 15, Component.literal("Y"));
-        boxZ = new EditBox(this.font, fx + (fieldW + 6) * 2, fy, fieldW, 15, Component.literal("Z"));
+        boxX = new EditBox(this.font, fx, fy, fieldW, 14, Component.literal("X"));
+        boxY = new EditBox(this.font, fx + fieldW + 6, fy, fieldW, 14, Component.literal("Y"));
+        boxZ = new EditBox(this.font, fx + (fieldW + 6) * 2, fy, fieldW, 14, Component.literal("Z"));
         boxX.setMaxLength(9); boxY.setMaxLength(9); boxZ.setMaxLength(9);
         boxX.setHint(Component.literal("X"));
         boxY.setHint(Component.literal("Y"));
@@ -68,11 +69,14 @@ public class TarsMenuScreen extends Screen {
         addRenderableWidget(boxZ);
 
         addRenderableWidget(goldBtn("Идти на XYZ", cx - bw / 2, top + gap * 5, bw, bh, this::sendGoTo));
-        addRenderableWidget(goldBtn("💾  Перепрошивка", cx - bw / 2, top + gap * 6, bw, bh, () -> {
+        addRenderableWidget(goldBtn("⛏  Добыча", cx - bw / 2, top + gap * 6, bw, bh, () -> {
+            if (minecraft != null) minecraft.setScreen(new TarsMineScreen(tars));
+        }));
+        addRenderableWidget(goldBtn("💾  Перепрошивка", cx - bw / 2, top + gap * 7, bw, bh, () -> {
             if (minecraft != null) minecraft.setScreen(new TarsFlashScreen(tars));
         }));
-        addRenderableWidget(goldBtn("Статус", cx - bw / 2, top + gap * 7, half, bh, () -> runCmd("tars status")));
-        addRenderableWidget(goldBtn("Закрыть", cx + 4, top + gap * 7, half, bh, this::onClose));
+        addRenderableWidget(goldBtn("Статус", cx - bw / 2, top + gap * 8, half, bh, () -> runCmd("tars status")));
+        addRenderableWidget(goldBtn("Закрыть", cx + 4, top + gap * 8, half, bh, this::onClose));
     }
 
     private void sendGoTo() {
