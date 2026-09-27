@@ -19,11 +19,15 @@ if "isDockOrdered" not in src:
         "    public boolean isDockOrdered() { return dockOrdered; }\n"
         "    public void setDockOrdered(boolean v) {\n"
         "        dockOrdered = v;\n"
-        "        if (!v) docked = false;\n"
+        "        if (!v) { docked = false; setNoGravity(false); }\n"
         "        if (v) { setFollowing(false); setSprintMode(false); setMiningOrdered(false); clearGoToTarget(false); }\n"
         "    }\n"
         "    public boolean isDocked() { return docked; }\n"
-        "    public void setDocked(boolean v) { this.docked = v; }\n"
+        "    public void setDocked(boolean v) {\n"
+        "        this.docked = v;\n"
+        "        if (v) setNoGravity(true);\n"
+        "        else setNoGravity(false);\n"
+        "    }\n"
         "    public ItemStack inventoryGet(int i) {\n"
         "        if (i < 0 || i >= INV_SIZE) return ItemStack.EMPTY;\n"
         "        return inventory.get(i);\n"
@@ -41,20 +45,21 @@ if "TarsDockGoal" not in src:
         "        this.goalSelector.addGoal(1, new TarsDockGoal(this));",
     )
 
-if '"sit"' in src or "SIT" not in src:
-    if "SIT" not in src:
-        src = src.replace(
-            'private static final RawAnimation DIG = RawAnimation.begin().thenLoop("dig");',
-            'private static final RawAnimation DIG = RawAnimation.begin().thenLoop("dig");\n'
-            '    private static final RawAnimation SIT = RawAnimation.begin().thenPlayAndHold("sit");',
-        )
+if "SIT" not in src:
+    src = src.replace(
+        'private static final RawAnimation DIG = RawAnimation.begin().thenLoop("dig");',
+        'private static final RawAnimation DIG = RawAnimation.begin().thenLoop("dig");\n'
+        '    private static final RawAnimation SIT = RawAnimation.begin().thenLoop("sit");',
+    )
+
+if "isDocked()" not in src or "setAndContinue(SIT)" not in src:
     old = 'if (isClimbing()) return event.setAndContinue(CLIMB);'
-    if old in src and "isDocked()" not in src:
+    if old in src and "setAndContinue(SIT)" not in src:
         src = src.replace(
             old,
             'if (isDocked()) return event.setAndContinue(SIT);\n            ' + old,
         )
-    elif 'if (isDigging()) return event.setAndContinue(DIG);' in src and "isDocked()" not in src:
+    elif 'if (isDigging()) return event.setAndContinue(DIG);' in src and "setAndContinue(SIT)" not in src:
         src = src.replace(
             'if (isDigging()) return event.setAndContinue(DIG);',
             'if (isDocked()) return event.setAndContinue(SIT);\n            if (isDigging()) return event.setAndContinue(DIG);',
@@ -69,6 +74,7 @@ DOCK_VOICE = '''
         if (containsAny(msg, "выйди", "встань", "с дока", "покинь порт")) {
             setDockOrdered(false);
             setDocked(false);
+            setNoGravity(false);
             speak(sp, "Покинул порт.");
             return true;
         }
@@ -79,12 +85,11 @@ DOCK_VOICE = '''
         }
 '''
 
-if "setDockOrdered(true)" not in src:
+if 'setDockOrdered(true)' not in src or 'Иду в порт' not in src:
     marker = 'if (containsAny(msg, "за мной", "следуй", "follow", "ко мне", "за мно"))'
-    if marker in src:
+    if marker in src and 'Иду в порт' not in src:
         src = src.replace(marker, DOCK_VOICE + "\n        " + marker, 1)
 
-# clear dock when follow/stop
 for pair in [
     ('setFollowing(true); setSprintMode(false); clearGoToTarget(false);\n            speak(sp, "Иду за вами.");',
      'setDockOrdered(false); setFollowing(true); setSprintMode(false); clearGoToTarget(false);\n            speak(sp, "Иду за вами.");'),
