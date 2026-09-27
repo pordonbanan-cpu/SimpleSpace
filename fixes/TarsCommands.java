@@ -42,7 +42,7 @@ public class TarsCommands {
                                     IntegerArgumentType.getInteger(ctx, "y"),
                                     IntegerArgumentType.getInteger(ctx, "z")))))))
                 .then(Commands.literal("flash")
-                    .then(Commands.argument("level", IntegerArgumentType.integer(1, 3))
+                    .then(Commands.argument("level", IntegerArgumentType.integer(1, 5))
                         .executes(ctx -> flash(ctx.getSource(), IntegerArgumentType.getInteger(ctx, "level")))))
                 .then(Commands.literal("за_мной").executes(ctx -> order(ctx.getSource(), "follow")))
                 .then(Commands.literal("стой").executes(ctx -> order(ctx.getSource(), "stay")))

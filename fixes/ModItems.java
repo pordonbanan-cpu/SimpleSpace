@@ -25,6 +25,10 @@ public class ModItems {
             ITEMS.register("flash_l2", () -> new Item(new Item.Properties().stacksTo(16)));
     public static final DeferredHolder<Item, Item> FLASH_L3 =
             ITEMS.register("flash_l3", () -> new Item(new Item.Properties().stacksTo(16)));
+    public static final DeferredHolder<Item, Item> FLASH_L4 =
+            ITEMS.register("flash_l4", () -> new Item(new Item.Properties().stacksTo(16)));
+    public static final DeferredHolder<Item, Item> FLASH_L5 =
+            ITEMS.register("flash_l5", () -> new Item(new Item.Properties().stacksTo(16)));
 
     public static final DeferredHolder<CreativeModeTab, CreativeModeTab> TAB = TABS.register("main",
             () -> CreativeModeTab.builder()
@@ -35,6 +39,8 @@ public class ModItems {
                         out.accept(FLASH_L1.get());
                         out.accept(FLASH_L2.get());
                         out.accept(FLASH_L3.get());
+                        out.accept(FLASH_L4.get());
+                        out.accept(FLASH_L5.get());
                     })
                     .build());
 
@@ -49,6 +55,8 @@ public class ModItems {
         if (i == FLASH_L1.get()) return 1;
         if (i == FLASH_L2.get()) return 2;
         if (i == FLASH_L3.get()) return 3;
+        if (i == FLASH_L4.get()) return 4;
+        if (i == FLASH_L5.get()) return 5;
         return 0;
     }
 }

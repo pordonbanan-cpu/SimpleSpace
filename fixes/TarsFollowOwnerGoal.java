@@ -5,6 +5,7 @@ import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.pathfinder.Path;
 
 import java.util.EnumSet;
 
@@ -18,7 +19,13 @@ public class TarsFollowOwnerGoal extends Goal {
     private int timeToRecalcPath;
     private int noProgress;
     private int digCd;
+    private int detourIdx;
     private double lastDist = Double.MAX_VALUE;
+
+    private static final int[][] DETOURS = {
+            {0, 0}, {3, 0}, {-3, 0}, {0, 3}, {0, -3},
+            {4, 4}, {4, -4}, {-4, 4}, {-4, -4}, {6, 0}, {-6, 0}
+    };
 
     public TarsFollowOwnerGoal(TarsEntity tars, double speed, float stopDistance, float startDistance) {
         this.tars = tars;
@@ -53,6 +60,7 @@ public class TarsFollowOwnerGoal extends Goal {
         timeToRecalcPath = 0;
         noProgress = 0;
         digCd = 0;
+        detourIdx = 0;
         lastDist = Double.MAX_VALUE;
     }
 
@@ -68,7 +76,7 @@ public class TarsFollowOwnerGoal extends Goal {
         if (owner == null) return;
 
         double dist = tars.distanceToSqr(owner);
-        if (dist < lastDist - 0.1) {
+        if (dist < lastDist - 0.15) {
             noProgress = 0;
             lastDist = dist;
         } else {
@@ -77,23 +85,39 @@ public class TarsFollowOwnerGoal extends Goal {
 
         if (--timeToRecalcPath <= 0) {
             timeToRecalcPath = tars.isSprintMode() ? 4 : 6;
-            double spd = speed;
-            if (tars.isSprintMode()) spd = speed * 2.0;
-            else if (dist > 64) spd = speed * 1.45;
-            tars.getNavigation().moveTo(owner, spd);
+            double spd = tars.isSprintMode() ? speed * 2.0 : (dist > 64 ? speed * 1.45 : speed);
+
+            boolean moved = tryMove(owner.blockPosition(), spd);
+            if (!moved && noProgress > 8) {
+                for (int i = 0; i < DETOURS.length; i++) {
+                    int idx = (detourIdx + i) % DETOURS.length;
+                    int[] d = DETOURS[idx];
+                    BlockPos side = owner.blockPosition().offset(d[0], 0, d[1]);
+                    if (tryMove(side, spd)) {
+                        detourIdx = (idx + 1) % DETOURS.length;
+                        moved = true;
+                        break;
+                    }
+                }
+            }
+            if (moved) tars.setDigging(false);
         }
 
         boolean navStuck = tars.getNavigation().isDone() && dist > 9;
-        if (noProgress > 15 || navStuck) {
+        if (noProgress > 35 || (navStuck && noProgress > 20)) {
             digToward(BlockPos.containing(owner.getX(), owner.getY(), owner.getZ()));
-        } else {
-            tars.setDigging(false);
         }
+    }
+
+    private boolean tryMove(BlockPos dest, double spd) {
+        Path path = tars.getNavigation().createPath(dest, 1);
+        if (path == null || path.getNodeCount() == 0) return false;
+        return tars.getNavigation().moveTo(path, spd);
     }
 
     private void digToward(BlockPos goal) {
         if (--digCd > 0) return;
-        digCd = 6;
+        digCd = 7;
         tars.setDigging(true);
 
         BlockPos base = tars.blockPosition();
@@ -102,12 +126,11 @@ public class TarsFollowOwnerGoal extends Goal {
         int dz = Integer.signum(goal.getZ() - base.getZ());
 
         BlockPos[] candidates = new BlockPos[] {
-                base.offset(dx, 0, dz),
                 base.offset(dx, 1, dz),
+                base.offset(dx, 0, dz),
                 base.offset(dx, dy, dz),
                 base.offset(0, 1, 0),
                 base.offset(dx, -1, dz),
-                base.above(),
                 base.offset(dx, 0, 0),
                 base.offset(0, 0, dz)
         };
@@ -117,7 +140,7 @@ public class TarsFollowOwnerGoal extends Goal {
             if (st.getDestroySpeed(tars.level(), p) < 0) continue;
             if (st.is(Blocks.BEDROCK) || st.is(Blocks.BARRIER) || st.is(Blocks.OBSIDIAN)) continue;
             tars.breakBlockForMine(p);
-            noProgress = 0;
+            noProgress = Math.max(0, noProgress - 10);
             lastDist = Double.MAX_VALUE;
             return;
         }
