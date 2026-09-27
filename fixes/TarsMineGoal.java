@@ -102,7 +102,8 @@ public class TarsMineGoal extends Goal {
                 tars.setClimbing(false);
             }
         }
-        if (noProgressTicks > 12 || dist < 64) digToward(target);
+        boolean navStuck = tars.getNavigation().isDone() && dist > 9;
+        if (noProgressTicks > 18 || (navStuck && noProgressTicks > 10)) digToward(target);
     }
 
     private void digToward(BlockPos goal) {
@@ -110,14 +111,22 @@ public class TarsMineGoal extends Goal {
         digCooldown = tars.getFlashLevel() >= 3 ? 5 : 8;
         tars.setDigging(true);
         BlockPos base = tars.blockPosition();
+        BlockPos under = base.below();
         int dx = Integer.signum(goal.getX() - base.getX());
         int dy = Integer.signum(goal.getY() - base.getY());
         int dz = Integer.signum(goal.getZ() - base.getZ());
+        boolean needDown = goal.getY() < base.getY() - 1;
         BlockPos[] candidates = new BlockPos[] {
-            base.offset(dx, 1, dz), base.offset(0, 1, 0), base.offset(dx, 0, dz),
-            base.offset(dx, dy, dz), base.offset(dx, -1, dz), base.above(), goal
+            base.offset(dx, 0, dz),
+            base.offset(dx, 1, dz),
+            base.offset(0, 1, 0),
+            base.offset(dx, dy > 0 ? 1 : 0, dz),
+            base.above(),
+            goal
         };
         for (BlockPos p : candidates) {
+            if (p.equals(base) || (!needDown && p.equals(under))) continue;
+            if (p.getY() < under.getY() && !needDown) continue;
             BlockState st = tars.level().getBlockState(p);
             if (st.isAir() || st.getDestroySpeed(tars.level(), p) < 0) continue;
             if (st.is(Blocks.BEDROCK) || st.is(Blocks.BARRIER)) continue;
@@ -125,6 +134,18 @@ public class TarsMineGoal extends Goal {
             tars.breakBlockForMine(p);
             noProgressTicks = 0;
             return;
+        }
+        if (needDown) {
+            BlockPos down = base.offset(dx, -1, dz);
+            if (!down.equals(under) || goal.getY() < under.getY()) {
+                BlockState st = tars.level().getBlockState(down);
+                if (!st.isAir() && st.getDestroySpeed(tars.level(), down) >= 0
+                        && !st.is(Blocks.BEDROCK) && !st.is(Blocks.BARRIER)) {
+                    tars.setClimbing(false);
+                    tars.breakBlockForMine(down);
+                    noProgressTicks = 0;
+                }
+            }
         }
     }
 
