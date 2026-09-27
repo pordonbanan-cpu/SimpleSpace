@@ -13,7 +13,7 @@ public class TarsMenuScreen extends Screen {
 
     private final TarsEntity tars;
     private static final int PANEL_W = 250;
-    private static final int PANEL_H = 268;
+    private static final int PANEL_H = 300;
 
     private static final int GOLD = 0xFFC8A030;
     private static final int GOLD_DIM = 0xFF8A7020;
@@ -75,8 +75,10 @@ public class TarsMenuScreen extends Screen {
         addRenderableWidget(goldBtn("💾  Перепрошивка", cx - bw / 2, top + gap * 7, bw, bh, () -> {
             if (minecraft != null) minecraft.setScreen(new TarsFlashScreen(tars));
         }));
-        addRenderableWidget(goldBtn("Статус", cx - bw / 2, top + gap * 8, half, bh, () -> runCmd("tars status")));
-        addRenderableWidget(goldBtn("Закрыть", cx + 4, top + gap * 8, half, bh, this::onClose));
+        addRenderableWidget(goldBtn("⬡  В порт", cx - bw / 2, top + gap * 8, half, bh, () -> runCmd("tars dock")));
+        addRenderableWidget(goldBtn("⏏  Из порта", cx + 4, top + gap * 8, half, bh, () -> runCmd("tars undock")));
+        addRenderableWidget(goldBtn("Статус", cx - bw / 2, top + gap * 9, half, bh, () -> runCmd("tars status")));
+        addRenderableWidget(goldBtn("Закрыть", cx + 4, top + gap * 9, half, bh, this::onClose));
     }
 
     private void sendGoTo() {
@@ -107,9 +109,11 @@ public class TarsMenuScreen extends Screen {
         g.renderOutline(x0, y0, PANEL_W, PANEL_H, GOLD);
         g.fill(x0 + 8, y0 + 21, x0 + PANEL_W - 8, y0 + 22, GOLD_DIM);
         g.drawCenteredString(font, "§6TARS §8· §7панель", cx, y0 + 7, 0xFFFFFF);
+        String dock = tars.isDocked() ? " §6⬡порт" : (tars.isDockOrdered() ? " §e→порт" : "");
         String sub = "§7L" + tars.getFlashLevel() + " §8· §7юмор §e" + tars.getHumor() + "%"
                 + (tars.isFollowing() ? " §a●" : " §c●")
-                + (tars.isSprintMode() ? " §bперекат" : "");
+                + (tars.isSprintMode() ? " §bперекат" : "")
+                + dock;
         g.drawCenteredString(font, sub, cx, y0 + PANEL_H - 11, 0xAAAAAA);
         super.render(g, mouseX, mouseY, partial);
     }
