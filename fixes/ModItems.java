@@ -35,12 +35,16 @@ public class ModItems {
     public static final DeferredHolder<Item, Item> TARS_DOCK =
             ITEMS.register("tars_dock", () -> new BlockItem(ModBlocks.TARS_DOCK.get(), new Item.Properties()));
 
+    public static final DeferredHolder<Item, Item> TARS_MANUAL =
+            ITEMS.register("tars_manual", () -> new TarsManualItem(new Item.Properties().stacksTo(1)));
+
     public static final DeferredHolder<CreativeModeTab, CreativeModeTab> TAB = TABS.register("main",
             () -> CreativeModeTab.builder()
                     .title(Component.literal("SimpleSpace"))
                     .icon(() -> new ItemStack(TARS_CORE.get()))
                     .displayItems((params, out) -> {
                         out.accept(TARS_CORE.get());
+                        out.accept(TARS_MANUAL.get());
                         out.accept(FLASH_L1.get());
                         out.accept(FLASH_L2.get());
                         out.accept(FLASH_L3.get());
