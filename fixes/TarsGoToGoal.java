@@ -55,6 +55,7 @@ public class TarsGoToGoal extends Goal {
         tars.clearGoToTarget(true);
         tars.getNavigation().stop();
         tars.setDigging(false);
+        tars.setClimbing(false);
     }
 
     @Override
@@ -85,7 +86,10 @@ public class TarsGoToGoal extends Goal {
                     }
                 }
             }
-            if (moved) tars.setDigging(false);
+            if (moved) {
+                tars.setDigging(false);
+                tars.setClimbing(false);
+            }
         }
 
         boolean navStuck = tars.getNavigation().isDone() && dist > 4;
@@ -112,9 +116,9 @@ public class TarsGoToGoal extends Goal {
 
         BlockPos[] candidates = new BlockPos[] {
                 base.offset(dx, 1, dz),
+                base.offset(0, 1, 0),
                 base.offset(dx, 0, dz),
                 base.offset(dx, dy, dz),
-                base.offset(0, 1, 0),
                 base.offset(dx, -1, dz)
         };
         for (BlockPos p : candidates) {
@@ -122,6 +126,7 @@ public class TarsGoToGoal extends Goal {
             if (st.isAir()) continue;
             if (st.getDestroySpeed(tars.level(), p) < 0) continue;
             if (st.is(Blocks.BEDROCK) || st.is(Blocks.BARRIER) || st.is(Blocks.OBSIDIAN)) continue;
+            tars.setClimbing(p.getY() > base.getY());
             tars.breakBlockForMine(p);
             noProgress = Math.max(0, noProgress - 10);
             lastDist = Double.MAX_VALUE;
