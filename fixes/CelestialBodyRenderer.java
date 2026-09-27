@@ -17,20 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Рендерит Солнце/Землю/Луну как настоящие 3D-сферы, зафиксированные в мировом
- * пространстве. Раньше здесь был плоский квад, полностью развёрнутый по
- * ориентации камеры (billboard) — из-за этого:
- *   1) объект выглядел плоским ("2D-земля"),
- *   2) при повороте камеры казалось, что планета крутится вместе с ней,
- *      а не остаётся на месте в мире,
- *   3) квад рисовался 6 вершинами (2 треугольника) в вершинном формате,
- *      ожидающем QUADS (по 4 вершины на грань) — геометрия рвалась,
- *      визуально это выглядело как "видно только половину".
- *
- * Теперь тело — реальная геометрия со своими нормалями, без какой-либо
- * привязки к повороту камеры. Единственное вращение — медленное собственное
- * вращение планеты вокруг своей оси (чисто визуальный эффект, по желанию
- * можно убрать).
+ * 3D-сферы планет в мировых координатах (не billboard).
  */
 public class CelestialBodyRenderer extends EntityRenderer<CelestialBodyEntity> {
 
@@ -41,12 +28,9 @@ public class CelestialBodyRenderer extends EntityRenderer<CelestialBodyEntity> {
     private static final ResourceLocation MOON =
             ResourceLocation.fromNamespaceAndPath("simplespace", "textures/entity/moon.png");
 
-    /** Число сегментов по долготе/широте. Больше — глаже сфера, но дороже. */
-    private static final int LON_SEGMENTS = 24;
-    private static final int LAT_SEGMENTS = 16;
-
-    /** Медленное собственное вращение планеты, градусов в тик. 0 = не крутить. */
-    private static final float SELF_SPIN_DEG_PER_TICK = 0.05f;
+    private static final int LON_SEGMENTS = 32;
+    private static final int LAT_SEGMENTS = 20;
+    private static final float SELF_SPIN_DEG_PER_TICK = 0.04f;
 
     private static List<Quad> SPHERE_MESH;
 
@@ -70,16 +54,13 @@ public class CelestialBodyRenderer extends EntityRenderer<CelestialBodyEntity> {
 
         float radius = entity.getBbWidth() * 0.5f;
 
-        // Мировая ориентация: НЕ трогаем ротацию камеры вообще.
-        // Только собственное медленное вращение планеты вокруг Y, если включено.
-        if (SELF_SPIN_DEG_PER_TICK != 0f) {
-            float spin = (entity.tickCount + pt) * SELF_SPIN_DEG_PER_TICK;
-            pose.mulPose(Axis.YP.rotationDegrees(spin));
-        }
+        // Только собственное вращение планеты — без camera-facing
+        float spin = (entity.tickCount + pt) * SELF_SPIN_DEG_PER_TICK;
+        pose.mulPose(Axis.YP.rotationDegrees(spin));
         pose.scale(radius, radius, radius);
 
         ResourceLocation tex = getTextureLocation(entity);
-        VertexConsumer vc = buffers.getBuffer(RenderType.entityCutoutNoCull(tex));
+        VertexConsumer vc = buffers.getBuffer(RenderType.entityTranslucent(tex));
         int fullBright = 0xF000F0;
         Matrix4f mat = pose.last().pose();
         org.joml.Matrix3f normalMat = pose.last().normal();
@@ -107,13 +88,10 @@ public class CelestialBodyRenderer extends EntityRenderer<CelestialBodyEntity> {
     public boolean shouldRender(CelestialBodyEntity entity,
                                  net.minecraft.client.renderer.culling.Frustum frustum,
                                  double x, double y, double z) {
-        return true;
+        return true; // большие тела не отсекать frustum'ом
     }
 
-    // ----- Генерация UV-сферы единичного радиуса (кэшируется один раз) -----
-
-    private record Quad(Vector3f[] pos, Vector3f normal, float[] u, float[] v) {
-    }
+    private record Quad(Vector3f[] pos, Vector3f normal, float[] u, float[] v) {}
 
     private static List<Quad> sphereMesh() {
         if (SPHERE_MESH != null) return SPHERE_MESH;
@@ -132,13 +110,11 @@ public class CelestialBodyRenderer extends EntityRenderer<CelestialBodyEntity> {
                 Vector3f p11 = spherePoint(lat1, lon1);
                 Vector3f p10 = spherePoint(lat1, lon0);
 
-                float v0 = (float) (lat) / LAT_SEGMENTS;
+                float v0 = (float) lat / LAT_SEGMENTS;
                 float v1 = (float) (lat + 1) / LAT_SEGMENTS;
-                float u0 = (float) (lon) / LON_SEGMENTS;
+                float u0 = (float) lon / LON_SEGMENTS;
                 float u1 = (float) (lon + 1) / LON_SEGMENTS;
 
-                // Нормаль грани — по центру (сфера гладкая, но плоское затенение
-                // не критично, т.к. используется fullBright).
                 Vector3f normal = new Vector3f(p00).add(p01).add(p11).add(p10).normalize();
 
                 quads.add(new Quad(
