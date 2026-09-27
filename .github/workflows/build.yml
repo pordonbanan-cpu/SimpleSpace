@@ -8,6 +8,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Unpack sources
         run: |
@@ -45,7 +47,9 @@ jobs:
           cp fixes/SpaceCommands.java src/main/java/com/simplespace/command/ 2>/dev/null || true
           cp fixes/ClientModEvents.java src/main/java/com/simplespace/client/
 
-          cp fixes/TarsEntity.java src/main/java/com/simplespace/tars/
+          git show a1afa4f37ac0affad4a22c3124ad659d596fdc93:fixes/TarsEntity.java > src/main/java/com/simplespace/tars/TarsEntity.java
+          python3 fixes/patch_warehouse.py src/main/java/com/simplespace/tars/TarsEntity.java
+
           cp fixes/TarsFollowOwnerGoal.java src/main/java/com/simplespace/tars/
           cp fixes/TarsGoToGoal.java src/main/java/com/simplespace/tars/
           cp fixes/TarsMineGoal.java src/main/java/com/simplespace/tars/
