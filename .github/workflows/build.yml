@@ -48,6 +48,7 @@ jobs:
           cp fixes/ModBlocks.java src/main/java/com/simplespace/block/
           cp fixes/TarsDockBlock.java src/main/java/com/simplespace/block/
           cp fixes/TarsCoreItem.java src/main/java/com/simplespace/item/
+          cp fixes/TarsManualItem.java src/main/java/com/simplespace/item/
           cp fixes/SpaceCommands.java src/main/java/com/simplespace/command/ 2>/dev/null || true
           cp fixes/ClientModEvents.java src/main/java/com/simplespace/client/
 
@@ -82,18 +83,17 @@ jobs:
           mkdir -p src/main/resources/assets/simplespace/blockstates
           mkdir -p src/main/resources/assets/simplespace/models/block
           printf '%s\n' '{' '  "variants": {' '    "": { "model": "simplespace:block/tars_dock" }' '  }' '}' > src/main/resources/assets/simplespace/blockstates/tars_dock.json
-          printf '%s\n' '{' '  "parent": "minecraft:block/slab",' '  "textures": {' '    "bottom": "minecraft:block/iron_block",' '    "top": "minecraft:block/iron_block",' '    "side": "minecraft:block/iron_block"' '  }' '}' > src/main/resources/assets/simplespace/models/block/tars_dock.json
+          cp fixes/models/tars_dock_block.json src/main/resources/assets/simplespace/models/block/tars_dock.json
           printf '%s\n' '{' '  "parent": "simplespace:block/tars_dock"' '}' > src/main/resources/assets/simplespace/models/item/tars_dock.json
 
           python3 -c "import base64,pathlib; pathlib.Path('src/main/resources/assets/simplespace/textures/entity/tars.png').write_bytes(base64.b64decode(pathlib.Path('fixes/tars.png.b64').read_text().strip()))"
 
-          for id in flash_l1 flash_l2 flash_l3 flash_l4 flash_l5 tars_core tars_dock; do
+          for id in flash_l1 flash_l2 flash_l3 flash_l4 flash_l5 tars_core tars_dock tars_manual; do
             printf '%s\n' "{" "  \"parent\": \"minecraft:item/generated\"," "  \"textures\": { \"layer0\": \"simplespace:item/${id}\" }" "}" > "src/main/resources/assets/simplespace/models/item/${id}.json"
           done
-          # item model for dock uses block model above — overwrite
           printf '%s\n' '{' '  "parent": "simplespace:block/tars_dock"' '}' > src/main/resources/assets/simplespace/models/item/tars_dock.json
-          printf '%s\n' '{' '  "item.simplespace.tars_core": "Монолит TARS",' '  "item.simplespace.flash_l1": "Флешка TARS L1 (Сканер)",' '  "item.simplespace.flash_l2": "Флешка TARS L2 (Добыча)",' '  "item.simplespace.flash_l3": "Флешка TARS L3 (Добыча+)",' '  "item.simplespace.flash_l4": "Флешка TARS L4 (Сканер+)",' '  "item.simplespace.flash_l5": "Флешка TARS L5 (Броня)",' '  "item.simplespace.tars_dock": "Порт TARS",' '  "block.simplespace.tars_dock": "Порт TARS"' '}' > src/main/resources/assets/simplespace/lang/ru_ru.json
-          printf '%s\n' '{' '  "item.simplespace.tars_core": "TARS Monolith",' '  "item.simplespace.flash_l1": "TARS Flash L1",' '  "item.simplespace.flash_l2": "TARS Flash L2",' '  "item.simplespace.flash_l3": "TARS Flash L3",' '  "item.simplespace.flash_l4": "TARS Flash L4",' '  "item.simplespace.flash_l5": "TARS Flash L5",' '  "item.simplespace.tars_dock": "TARS Port",' '  "block.simplespace.tars_dock": "TARS Port"' '}' > src/main/resources/assets/simplespace/lang/en_us.json
+          printf '%s\n' '{' '  "item.simplespace.tars_core": "Монолит TARS",' '  "item.simplespace.flash_l1": "Флешка TARS L1 (Сканер)",' '  "item.simplespace.flash_l2": "Флешка TARS L2 (Добыча)",' '  "item.simplespace.flash_l3": "Флешка TARS L3 (Добыча+)",' '  "item.simplespace.flash_l4": "Флешка TARS L4 (Сканер+)",' '  "item.simplespace.flash_l5": "Флешка TARS L5 (Броня)",' '  "item.simplespace.tars_dock": "Порт TARS",' '  "block.simplespace.tars_dock": "Порт TARS",' '  "item.simplespace.tars_manual": "Пособие TARS"' '}' > src/main/resources/assets/simplespace/lang/ru_ru.json
+          printf '%s\n' '{' '  "item.simplespace.tars_core": "TARS Monolith",' '  "item.simplespace.flash_l1": "TARS Flash L1",' '  "item.simplespace.flash_l2": "TARS Flash L2",' '  "item.simplespace.flash_l3": "TARS Flash L3",' '  "item.simplespace.flash_l4": "TARS Flash L4",' '  "item.simplespace.flash_l5": "TARS Flash L5",' '  "item.simplespace.tars_dock": "TARS Port",' '  "block.simplespace.tars_dock": "TARS Port",' '  "item.simplespace.tars_manual": "TARS Manual"' '}' > src/main/resources/assets/simplespace/lang/en_us.json
 
           mkdir -p src/main/resources/data/simplespace/dimension_type
           mkdir -p src/main/resources/data/simplespace/dimension
@@ -241,6 +241,16 @@ jobs:
                   return c, c, int(c * 1.1), 255
               return 0, 0, 0, 0
           write_png(item / 'tars_core.png', 16, 16, core)
+
+          def manual(x, y, w, h):
+              if 2 <= x <= 13 and 1 <= y <= 14:
+                  if x in (2, 13) or y in (1, 14):
+                      return 90, 70, 40, 255
+                  if 4 <= x <= 11 and 3 <= y <= 5:
+                      return 200, 170, 60, 255
+                  return 140, 110, 70, 255
+              return 0, 0, 0, 0
+          write_png(item / 'tars_manual.png', 16, 16, manual)
 
           print('all textures ok')
           PY
