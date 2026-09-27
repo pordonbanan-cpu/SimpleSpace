@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "III",
+    "IBI",
+    "III"
+  ],
+  "key": {
+    "I": { "item": "minecraft:iron_ingot" },
+    "B": { "item": "minecraft:iron_block" }
+  },
+  "result": {
+    "id": "simplespace:tars_dock",
+    "count": 1
+  }
+}
