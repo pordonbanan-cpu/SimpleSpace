@@ -52,6 +52,7 @@ jobs:
           cp fixes/TarsCommands.java src/main/java/com/simplespace/command/
           cp fixes/TarsMenuScreen.java src/main/java/com/simplespace/client/
           cp fixes/TarsFlashScreen.java src/main/java/com/simplespace/client/
+          cp fixes/TarsMineScreen.java src/main/java/com/simplespace/client/
           cp fixes/TarsGeoModel.java src/main/java/com/simplespace/client/
           cp fixes/TarsGeoRenderer.java src/main/java/com/simplespace/client/
 
