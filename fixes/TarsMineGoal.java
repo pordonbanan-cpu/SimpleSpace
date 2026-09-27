@@ -16,7 +16,9 @@ public class TarsMineGoal extends Goal {
     private final TarsEntity tars;
     private BlockPos target;
     private int digCooldown;
-    private int stuckTicks;
+    private int repathCooldown;
+    private int noProgressTicks;
+    private double lastDist = Double.MAX_VALUE;
 
     public TarsMineGoal(TarsEntity tars) {
         this.tars = tars;
@@ -37,6 +39,7 @@ public class TarsMineGoal extends Goal {
         if (target == null) return false;
         if (tars.level().getBlockState(target).isAir()) {
             target = tars.findNearestOre(tars.getMineOreFilter());
+            lastDist = Double.MAX_VALUE;
             return target != null;
         }
         return true;
@@ -45,8 +48,10 @@ public class TarsMineGoal extends Goal {
     @Override
     public void start() {
         digCooldown = 0;
-        stuckTicks = 0;
-        tars.setDigging(true);
+        repathCooldown = 0;
+        noProgressTicks = 0;
+        lastDist = Double.MAX_VALUE;
+        tars.setDigging(false);
     }
 
     @Override
@@ -63,67 +68,86 @@ public class TarsMineGoal extends Goal {
         double dist = tars.distanceToSqr(target.getX() + 0.5, target.getY() + 0.5, target.getZ() + 0.5);
         tars.getLookControl().setLookAt(target.getX() + 0.5, target.getY() + 0.5, target.getZ() + 0.5);
 
-        if (dist > 2.8) {
-            if (tars.tickCount % 8 == 0) {
-                Path path = tars.getNavigation().createPath(target, 1);
-                if (path != null) {
-                    tars.getNavigation().moveTo(path, tars.getFlashLevel() >= 3 ? 1.35 : 1.15);
-                    stuckTicks = 0;
-                } else {
-                    stuckTicks++;
-                }
-            }
-            if (stuckTicks > 15 || dist < 25) {
-                digToward(target);
-            }
+        if (dist < lastDist - 0.05) {
+            noProgressTicks = 0;
+            lastDist = dist;
         } else {
+            noProgressTicks++;
+        }
+
+        if (dist <= 6.25) {
             tars.getNavigation().stop();
+            tars.setDigging(true);
             if (--digCooldown <= 0) {
-                digCooldown = tars.getFlashLevel() >= 3 ? 8 : 12;
+                digCooldown = tars.getFlashLevel() >= 3 ? 7 : 11;
                 if (!tars.level().getBlockState(target).isAir()) {
                     tars.level().destroyBlock(target, true, tars);
                     tars.level().playSound(null, target, SoundEvents.STONE_BREAK,
                             SoundSource.BLOCKS, 0.7f, 1.0f);
-                    tars.setDigging(true);
                     ServerPlayer sp = owner();
-                    if (sp != null && tars.getRandom().nextInt(4) == 0) {
+                    if (sp != null && tars.getRandom().nextInt(5) == 0) {
                         tars.speak(sp, "Руда добыта.");
                     }
                 }
                 target = tars.findNearestOre(tars.getMineOreFilter());
+                lastDist = Double.MAX_VALUE;
                 if (target == null) {
                     tars.setMiningOrdered(false);
+                    tars.setDigging(false);
                     ServerPlayer sp = owner();
                     if (sp != null) tars.speak(sp, "Больше руды рядом нет.");
                 }
             }
+            return;
+        }
+
+        if (--repathCooldown <= 0) {
+            repathCooldown = 6;
+            BlockPos walkTo = target;
+            if (target.getY() < tars.blockPosition().getY() - 1) {
+                walkTo = new BlockPos(target.getX(), tars.blockPosition().getY(), target.getZ());
+            }
+            Path path = tars.getNavigation().createPath(walkTo, 1);
+            if (path == null) path = tars.getNavigation().createPath(target, 0);
+            if (path != null) {
+                double spd = tars.getFlashLevel() >= 3 ? 1.4 : 1.2;
+                tars.getNavigation().moveTo(path, spd);
+                tars.setDigging(false);
+            }
+        }
+
+        if (noProgressTicks > 12 || dist < 64) {
+            digToward(target);
         }
     }
 
     private void digToward(BlockPos goal) {
         if (--digCooldown > 0) return;
-        digCooldown = tars.getFlashLevel() >= 3 ? 6 : 10;
+        digCooldown = tars.getFlashLevel() >= 3 ? 5 : 8;
+        tars.setDigging(true);
 
         BlockPos base = tars.blockPosition();
         int dx = Integer.signum(goal.getX() - base.getX());
-        int dz = Integer.signum(goal.getZ() - base.getZ());
         int dy = Integer.signum(goal.getY() - base.getY());
+        int dz = Integer.signum(goal.getZ() - base.getZ());
 
         BlockPos[] candidates = new BlockPos[] {
                 base.offset(dx, 0, dz),
                 base.offset(dx, 1, dz),
                 base.offset(dx, dy, dz),
+                base.offset(0, dy, 0),
+                base.offset(dx, -1, dz),
                 base.above(),
-                base.offset(0, dy, 0)
+                goal
         };
         for (BlockPos p : candidates) {
             BlockState st = tars.level().getBlockState(p);
-            if (st.isAir() || st.getDestroySpeed(tars.level(), p) < 0) continue;
+            if (st.isAir()) continue;
+            if (st.getDestroySpeed(tars.level(), p) < 0) continue;
             if (st.is(Blocks.BEDROCK) || st.is(Blocks.BARRIER)) continue;
             tars.level().destroyBlock(p, true, tars);
             tars.level().playSound(null, p, SoundEvents.STONE_BREAK, SoundSource.BLOCKS, 0.5f, 0.9f);
-            tars.setDigging(true);
-            stuckTicks = 0;
+            noProgressTicks = 0;
             return;
         }
     }
