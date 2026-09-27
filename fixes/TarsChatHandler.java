@@ -29,7 +29,10 @@ public class TarsChatHandler {
                 || lower.contains("координат")
                 || lower.contains("добудь") || lower.contains("добывай") || lower.contains("копай")
                 || lower.contains("где ближайш") || lower.contains("где руда") || lower.contains("где руды")
-                || lower.contains("найди руд") || lower.contains("хватит копать");
+                || lower.contains("найди руд") || lower.contains("хватит копать")
+                || lower.contains("отдай") || lower.contains("принеси") || lower.contains("дай мне")
+                || lower.contains("склад") || lower.contains("выгрузи")
+                || lower.contains("собирай") || lower.contains("не подбирай") || lower.contains("оставь на земле");
 
         if (!addressed) return;
 

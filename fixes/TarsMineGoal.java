@@ -2,8 +2,6 @@ package com.simplespace.tars;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.sounds.SoundEvents;
-import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
@@ -81,13 +79,7 @@ public class TarsMineGoal extends Goal {
             if (--digCooldown <= 0) {
                 digCooldown = tars.getFlashLevel() >= 3 ? 7 : 11;
                 if (!tars.level().getBlockState(target).isAir()) {
-                    tars.level().destroyBlock(target, true, tars);
-                    tars.level().playSound(null, target, SoundEvents.STONE_BREAK,
-                            SoundSource.BLOCKS, 0.7f, 1.0f);
-                    ServerPlayer sp = owner();
-                    if (sp != null && tars.getRandom().nextInt(5) == 0) {
-                        tars.speak(sp, "Руда добыта.");
-                    }
+                    tars.breakBlockForMine(target);
                 }
                 target = tars.findNearestOre(tars.getMineOreFilter());
                 lastDist = Double.MAX_VALUE;
@@ -95,7 +87,7 @@ public class TarsMineGoal extends Goal {
                     tars.setMiningOrdered(false);
                     tars.setDigging(false);
                     ServerPlayer sp = owner();
-                    if (sp != null) tars.speak(sp, "Больше руды рядом нет.");
+                    if (sp != null) tars.speak(sp, "Готово. На складе: " + tars.countItems() + " шт.");
                 }
             }
             return;
@@ -145,8 +137,7 @@ public class TarsMineGoal extends Goal {
             if (st.isAir()) continue;
             if (st.getDestroySpeed(tars.level(), p) < 0) continue;
             if (st.is(Blocks.BEDROCK) || st.is(Blocks.BARRIER)) continue;
-            tars.level().destroyBlock(p, true, tars);
-            tars.level().playSound(null, p, SoundEvents.STONE_BREAK, SoundSource.BLOCKS, 0.5f, 0.9f);
+            tars.breakBlockForMine(p);
             noProgressTicks = 0;
             return;
         }
