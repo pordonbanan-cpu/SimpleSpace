@@ -1,5 +1,6 @@
 package com.simplespace;
 
+import com.simplespace.block.ModBlocks;
 import com.simplespace.command.SpaceCommands;
 import com.simplespace.command.TarsCommands;
 import com.simplespace.entity.ModEntities;
@@ -24,6 +25,7 @@ public class SimpleSpace {
     public static final Logger LOGGER = LogUtils.getLogger();
 
     public SimpleSpace(IEventBus modEventBus) {
+        ModBlocks.register(modEventBus);
         ModEntities.register(modEventBus);
         ModItems.register(modEventBus);
 
