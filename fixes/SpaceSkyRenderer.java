@@ -2,6 +2,7 @@ package com.simplespace.client;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.*;
+import com.mojang.math.Axis;
 import com.simplespace.dimension.ModDimensions;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
@@ -15,6 +16,11 @@ import org.joml.Matrix4f;
 
 import java.util.Random;
 
+/**
+ * Космическое небо, зафиксированное в МИРЕ (не к камере).
+ * Звёзды и Млечный Путь крутятся только когда крутится игрок —
+ * как настоящее небо, а не картинка на стекле шлема.
+ */
 @EventBusSubscriber(modid = "simplespace", value = Dist.CLIENT)
 public class SpaceSkyRenderer {
 
@@ -32,15 +38,21 @@ public class SpaceSkyRenderer {
         if (mc.level == null) return;
         if (mc.level.dimension() != ModDimensions.SPACE_LEVEL) return;
 
-        Matrix4f pose = event.getPoseStack().last().pose();
+        Camera camera = event.getCamera();
         Matrix4f proj = event.getProjectionMatrix();
 
-        Matrix4f modelView = new Matrix4f(pose);
-        modelView.m30(0);
-        modelView.m31(0);
-        modelView.m32(0);
+        // Модельная матрица = только ориентация камеры (без трансляции).
+        // Звёзды лежат в «мировых» направлениях; при повороте головы
+        // они смещаются по экрану как настоящее небо.
+        Matrix4f modelView = new Matrix4f();
+        modelView.rotationXYZ(
+                (float) Math.toRadians(camera.getXRot()),
+                (float) Math.toRadians(camera.getYRot() + 180f),
+                0f
+        );
 
         RenderSystem.depthMask(false);
+        RenderSystem.disableDepthTest();
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
         RenderSystem.disableCull();
@@ -57,6 +69,7 @@ public class SpaceSkyRenderer {
         renderMilkyWay(modelView, proj);
 
         RenderSystem.enableCull();
+        RenderSystem.enableDepthTest();
         RenderSystem.depthMask(true);
         RenderSystem.disableBlend();
         RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
@@ -70,7 +83,7 @@ public class SpaceSkyRenderer {
                 .begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
 
         Random rng = new Random(10842L);
-        for (int i = 0; i < 3000; i++) {
+        for (int i = 0; i < 4000; i++) {
             double x = rng.nextDouble() * 2 - 1;
             double y = rng.nextDouble() * 2 - 1;
             double z = rng.nextDouble() * 2 - 1;
@@ -78,8 +91,8 @@ public class SpaceSkyRenderer {
             if (len < 0.15) continue;
             x /= len; y /= len; z /= len;
 
-            float size = 0.12f + rng.nextFloat() * 0.4f;
-            int br = 170 + rng.nextInt(86);
+            float size = 0.10f + rng.nextFloat() * 0.35f;
+            int br = 160 + rng.nextInt(96);
             int r = br, g = br, b = br;
             float tint = rng.nextFloat();
             if (tint < 0.12f) b = Math.min(255, br + 50);
@@ -117,14 +130,18 @@ public class SpaceSkyRenderer {
     private static void renderMilkyWay(Matrix4f modelView, Matrix4f proj) {
         RenderSystem.setShader(GameRenderer::getPositionTexColorShader);
         RenderSystem.setShaderTexture(0, MILKY_WAY);
-        RenderSystem.setShaderColor(1f, 1f, 1f, 0.65f);
+        RenderSystem.setShaderColor(1f, 1f, 1f, 0.55f);
+
+        // Те же матрицы, что у звёзд — иначе полоса «липнет» к камере
+        RenderSystem.setProjectionMatrix(proj, com.mojang.blaze3d.vertex.VertexSorting.DISTANCE_TO_ORIGIN);
+        // modelView задаём через ShaderInstance uniforms при drawWithShader ниже
 
         BufferBuilder buf = Tesselator.getInstance()
                 .begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
 
-        int segments = 48;
-        double radius = 90.0;
-        double bandHalf = 20.0;
+        int segments = 64;
+        double radius = 95.0;
+        double bandHalf = 22.0;
         double tilt = 28.0 * Math.PI / 180.0;
 
         for (int i = 0; i < segments; i++) {
@@ -144,7 +161,7 @@ public class SpaceSkyRenderer {
                 float[] p11 = sp(a1, lat1, radius, tilt);
                 float[] p01 = sp(a0, lat1, radius, tilt);
 
-                int a = 200;
+                int a = 180;
                 buf.addVertex(p00[0], p00[1], p00[2]).setUv(u0, v0).setColor(190, 195, 255, a);
                 buf.addVertex(p10[0], p10[1], p10[2]).setUv(u1, v0).setColor(190, 195, 255, a);
                 buf.addVertex(p11[0], p11[1], p11[2]).setUv(u1, v1).setColor(190, 195, 255, a);
@@ -152,7 +169,14 @@ public class SpaceSkyRenderer {
             }
         }
 
-        BufferUploader.drawWithShader(buf.buildOrThrow());
+        MeshData mesh = buf.buildOrThrow();
+        VertexBuffer vb = new VertexBuffer(VertexBuffer.Usage.DYNAMIC);
+        vb.bind();
+        vb.upload(mesh);
+        vb.drawWithShader(modelView, proj, GameRenderer.getPositionTexColorShader());
+        VertexBuffer.unbind();
+        vb.close();
+
         RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
     }
 
