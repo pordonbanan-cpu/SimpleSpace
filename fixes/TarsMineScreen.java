@@ -12,7 +12,7 @@ public class TarsMineScreen extends Screen {
 
     private final TarsEntity tars;
     private static final int PANEL_W = 240;
-    private static final int PANEL_H = 210;
+    private static final int PANEL_H = 230;
     private static final int GOLD = 0xFFC8A030;
     private static final int PANEL_BG = 0xF0121218;
 
@@ -24,22 +24,36 @@ public class TarsMineScreen extends Screen {
     @Override
     protected void init() {
         int cx = width / 2;
-        int top = height / 2 - PANEL_H / 2 + 36;
-        int bw = 200, bh = 16, gap = 18;
+        int top = height / 2 - PANEL_H / 2 + 40;
+        int bw = 200, bh = 16, gap = 17;
 
-        addRenderableWidget(btn("Добывать любые руды", cx - bw / 2, top, bw, bh,
+        String collectLabel = tars.isCollectDrops()
+                ? "§a☑ Сбор в склад TARS"
+                : "§7☐ Сбор в склад (сейчас на землю)";
+        addRenderableWidget(btn(collectLabel, cx - bw / 2, top, bw, bh, () -> {
+            if (minecraft != null && minecraft.player != null) {
+                boolean next = !tars.isCollectDrops();
+                minecraft.player.connection.sendCommand("tars collect " + (next ? "on" : "off"));
+                tars.setCollectDrops(next);
+                minecraft.setScreen(new TarsMineScreen(tars));
+            }
+        }));
+
+        addRenderableWidget(btn("Добывать любые руды", cx - bw / 2, top + gap, bw, bh,
                 () -> run("добудь руды")));
-        addRenderableWidget(btn("Добывать железо", cx - bw / 2, top + gap, bw, bh,
+        addRenderableWidget(btn("Добывать железо", cx - bw / 2, top + gap * 2, bw, bh,
                 () -> run("добудь железо")));
-        addRenderableWidget(btn("Добывать уголь", cx - bw / 2, top + gap * 2, bw, bh,
+        addRenderableWidget(btn("Добывать уголь", cx - bw / 2, top + gap * 3, bw, bh,
                 () -> run("добудь уголь")));
-        addRenderableWidget(btn("Добывать алмазы", cx - bw / 2, top + gap * 3, bw, bh,
+        addRenderableWidget(btn("Добывать алмазы", cx - bw / 2, top + gap * 4, bw, bh,
                 () -> run("добудь алмаз")));
-        addRenderableWidget(btn("Где ближайшая руда", cx - bw / 2, top + gap * 4, bw, bh,
+        addRenderableWidget(btn("Где ближайшая руда", cx - bw / 2, top + gap * 5, bw, bh,
                 () -> run("где ближайшая руда")));
-        addRenderableWidget(btn("Стоп добыча", cx - bw / 2, top + gap * 5, bw, bh,
+        addRenderableWidget(btn("Отдай мне склад", cx - bw / 2, top + gap * 6, bw, bh,
+                () -> run("отдай")));
+        addRenderableWidget(btn("Стоп добыча", cx - bw / 2, top + gap * 7, bw, bh,
                 () -> run("хватит копать")));
-        addRenderableWidget(btn("Назад", cx - bw / 2, top + gap * 6, bw, bh,
+        addRenderableWidget(btn("Назад", cx - bw / 2, top + gap * 8, bw, bh,
                 () -> { if (minecraft != null) minecraft.setScreen(new TarsMenuScreen(tars)); }));
     }
 
@@ -62,7 +76,7 @@ public class TarsMineScreen extends Screen {
         g.fill(x0, y0, x0 + PANEL_W, y0 + PANEL_H, PANEL_BG);
         g.renderOutline(x0, y0, PANEL_W, PANEL_H, GOLD);
         g.drawCenteredString(font, "§6Добыча §8· §7L" + tars.getFlashLevel(), cx, y0 + 12, 0xFFFFFF);
-        g.drawCenteredString(font, "§8Нужен модуль L2+ для добычи", cx, y0 + 24, 0x888888);
+        g.drawCenteredString(font, "§8L2+ · галочка = в склад TARS", cx, y0 + 24, 0x888888);
         super.render(g, mouseX, mouseY, partial);
     }
 
