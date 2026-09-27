@@ -50,11 +50,13 @@ public class TarsMineGoal extends Goal {
         noProgressTicks = 0;
         lastDist = Double.MAX_VALUE;
         tars.setDigging(false);
+        tars.setClimbing(false);
     }
 
     @Override
     public void stop() {
         tars.setDigging(false);
+        tars.setClimbing(false);
         tars.getNavigation().stop();
         target = null;
     }
@@ -70,6 +72,7 @@ public class TarsMineGoal extends Goal {
         if (dist <= 6.25) {
             tars.getNavigation().stop();
             tars.setDigging(true);
+            tars.setClimbing(false);
             if (--digCooldown <= 0) {
                 digCooldown = tars.getFlashLevel() >= 3 ? 7 : 11;
                 if (!tars.level().getBlockState(target).isAir()) {
@@ -81,7 +84,7 @@ public class TarsMineGoal extends Goal {
                     tars.setMiningOrdered(false);
                     tars.setDigging(false);
                     ServerPlayer sp = owner();
-                    if (sp != null) tars.speak(sp, "Готово. На складе: " + tars.countItems() + " шт.");
+                    if (sp != null) tars.speak(sp, "\u0413\u043e\u0442\u043e\u0432\u043e. \u041d\u0430 \u0441\u043a\u043b\u0430\u0434\u0435: " + tars.countItems() + " \u0448\u0442.");
                 }
             }
             return;
@@ -96,6 +99,7 @@ public class TarsMineGoal extends Goal {
             if (path != null) {
                 tars.getNavigation().moveTo(path, tars.getFlashLevel() >= 3 ? 1.4 : 1.2);
                 tars.setDigging(false);
+                tars.setClimbing(false);
             }
         }
         if (noProgressTicks > 12 || dist < 64) digToward(target);
@@ -110,13 +114,14 @@ public class TarsMineGoal extends Goal {
         int dy = Integer.signum(goal.getY() - base.getY());
         int dz = Integer.signum(goal.getZ() - base.getZ());
         BlockPos[] candidates = new BlockPos[] {
-            base.offset(dx, 0, dz), base.offset(dx, 1, dz), base.offset(dx, dy, dz),
-            base.offset(0, dy, 0), base.offset(dx, -1, dz), base.above(), goal
+            base.offset(dx, 1, dz), base.offset(0, 1, 0), base.offset(dx, 0, dz),
+            base.offset(dx, dy, dz), base.offset(dx, -1, dz), base.above(), goal
         };
         for (BlockPos p : candidates) {
             BlockState st = tars.level().getBlockState(p);
             if (st.isAir() || st.getDestroySpeed(tars.level(), p) < 0) continue;
             if (st.is(Blocks.BEDROCK) || st.is(Blocks.BARRIER)) continue;
+            tars.setClimbing(p.getY() > base.getY());
             tars.breakBlockForMine(p);
             noProgressTicks = 0;
             return;
