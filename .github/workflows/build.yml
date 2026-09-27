@@ -44,6 +44,7 @@ jobs:
           cp fixes/ModEntities.java src/main/java/com/simplespace/entity/ 2>/dev/null || true
           cp fixes/SimpleSpace.java src/main/java/com/simplespace/
           cp fixes/ModItems.java src/main/java/com/simplespace/item/
+          cp fixes/TarsCoreItem.java src/main/java/com/simplespace/item/
           cp fixes/SpaceCommands.java src/main/java/com/simplespace/command/ 2>/dev/null || true
           cp fixes/ClientModEvents.java src/main/java/com/simplespace/client/
 
@@ -66,16 +67,18 @@ jobs:
           mkdir -p src/main/resources/assets/simplespace/textures/item
           mkdir -p src/main/resources/assets/simplespace/models/item
           mkdir -p src/main/resources/assets/simplespace/lang
+          mkdir -p src/main/resources/data/simplespace/recipe
           cp fixes/tars.geo.json src/main/resources/assets/simplespace/geo/entity/
           cp fixes/tars.animation.json src/main/resources/assets/simplespace/animations/entity/
+          cp fixes/recipes/*.json src/main/resources/data/simplespace/recipe/
 
           python3 -c "import base64,pathlib; pathlib.Path('src/main/resources/assets/simplespace/textures/entity/tars.png').write_bytes(base64.b64decode(pathlib.Path('fixes/tars.png.b64').read_text().strip()))"
 
-          for id in flash_l1 flash_l2 flash_l3; do
+          for id in flash_l1 flash_l2 flash_l3 tars_core; do
             printf '%s\n' "{" "  \"parent\": \"minecraft:item/generated\"," "  \"textures\": { \"layer0\": \"simplespace:item/${id}\" }" "}" > "src/main/resources/assets/simplespace/models/item/${id}.json"
           done
-          printf '%s\n' '{' '  "item.simplespace.flash_l1": "Флешка TARS L1 (Сканер)",' '  "item.simplespace.flash_l2": "Флешка TARS L2 (Добыча)",' '  "item.simplespace.flash_l3": "Флешка TARS L3 (Добыча+)"' '}' > src/main/resources/assets/simplespace/lang/ru_ru.json
-          printf '%s\n' '{' '  "item.simplespace.flash_l1": "TARS Flash L1",' '  "item.simplespace.flash_l2": "TARS Flash L2",' '  "item.simplespace.flash_l3": "TARS Flash L3"' '}' > src/main/resources/assets/simplespace/lang/en_us.json
+          printf '%s\n' '{' '  "item.simplespace.tars_core": "Монолит TARS",' '  "item.simplespace.flash_l1": "Флешка TARS L1 (Сканер)",' '  "item.simplespace.flash_l2": "Флешка TARS L2 (Добыча)",' '  "item.simplespace.flash_l3": "Флешка TARS L3 (Добыча+)"' '}' > src/main/resources/assets/simplespace/lang/ru_ru.json
+          printf '%s\n' '{' '  "item.simplespace.tars_core": "TARS Monolith",' '  "item.simplespace.flash_l1": "TARS Flash L1",' '  "item.simplespace.flash_l2": "TARS Flash L2",' '  "item.simplespace.flash_l3": "TARS Flash L3"' '}' > src/main/resources/assets/simplespace/lang/en_us.json
 
           mkdir -p src/main/resources/data/simplespace/dimension_type
           mkdir -p src/main/resources/data/simplespace/dimension
@@ -178,20 +181,49 @@ jobs:
 
           item = Path('src/main/resources/assets/simplespace/textures/item')
           item.mkdir(parents=True, exist_ok=True)
-          colors = {
-              'flash_l1': (80, 180, 255),
-              'flash_l2': (80, 220, 120),
-              'flash_l3': (255, 200, 60),
+
+          configs = {
+              'flash_l1': {'body': (40, 120, 200), 'accent': (120, 200, 255), 'label': (200, 220, 255)},
+              'flash_l2': {'body': (30, 140, 70), 'accent': (80, 220, 120), 'label': (180, 255, 200)},
+              'flash_l3': {'body': (160, 120, 30), 'accent': (255, 210, 60), 'label': (255, 240, 180)},
           }
-          for name, (cr, cg, cb) in colors.items():
-              def make(x, y, w, h, cr=cr, cg=cg, cb=cb):
-                  if 5 <= x <= 10 and 1 <= y <= 4:
-                      return 180, 180, 190, 255
-                  if 3 <= x <= 12 and 5 <= y <= 14:
-                      shade = 1.0 if (x + y) % 3 else 0.85
-                      return int(cr*shade), int(cg*shade), int(cb*shade), 255
+          for name, c in configs.items():
+              br, bg, bb = c['body']
+              ar, ag, ab = c['accent']
+              lr, lg, lb = c['label']
+              def make(x, y, w, h, br=br, bg=bg, bb=bb, ar=ar, ag=ag, ab=ab, lr=lr, lg=lg, lb=lb):
+                  if 5 <= x <= 10 and 0 <= y <= 3:
+                      shade = 0.85 + 0.15 * ((x + y) % 2)
+                      if y == 3 and x in (6, 7, 8, 9):
+                          return int(60*shade), int(60*shade), int(70*shade), 255
+                      return int(190*shade), int(190*shade), int(200*shade), 255
+                  if 3 <= x <= 12 and 4 <= y <= 14:
+                      if x == 3 or x == 12:
+                          return int(br*0.5), int(bg*0.5), int(bb*0.5), 255
+                      if y == 7:
+                          return ar, ag, ab, 255
+                      if 5 <= x <= 10 and 9 <= y <= 12:
+                          return lr, lg, lb, 255
+                      n = 1.0 if (x * 3 + y * 5) % 4 else 0.9
+                      return int(br*n), int(bg*n), int(bb*n), 255
+                  if 4 <= x <= 11 and y == 15:
+                      return int(br*0.4), int(bg*0.4), int(bb*0.4), 255
                   return 0, 0, 0, 0
-              write_png(item/f'{name}.png', 16, 16, make)
+              write_png(item / f'{name}.png', 16, 16, make)
+
+          def core(x, y, w, h):
+              if 4 <= x <= 11 and 1 <= y <= 14:
+                  if x in (4, 11) or y in (1, 14):
+                      return 200, 170, 60, 255
+                  shade = 0.25 + 0.1 * ((x + y) % 3)
+                  if x == 6:
+                      shade += 0.15
+                  if x in (7, 8) and 4 <= y <= 11:
+                      return 180, 150, 40, 255
+                  c = int(25 + 40 * shade)
+                  return c, c, int(c * 1.1), 255
+              return 0, 0, 0, 0
+          write_png(item / 'tars_core.png', 16, 16, core)
 
           print('all textures ok')
           PY
