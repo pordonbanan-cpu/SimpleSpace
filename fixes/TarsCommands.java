@@ -2,6 +2,7 @@ package com.simplespace.command;
 
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.mojang.brigadier.arguments.StringArgumentType;
 import com.simplespace.item.ModItems;
 import com.simplespace.tars.TarsEntity;
 import com.simplespace.entity.ModEntities;
@@ -25,6 +26,10 @@ public class TarsCommands {
                 .then(Commands.literal("stay").executes(ctx -> order(ctx.getSource(), "stay")))
                 .then(Commands.literal("sprint").executes(ctx -> order(ctx.getSource(), "sprint")))
                 .then(Commands.literal("status").executes(ctx -> order(ctx.getSource(), "status")))
+                .then(Commands.literal("give").executes(ctx -> give(ctx.getSource())))
+                .then(Commands.literal("collect")
+                    .then(Commands.argument("mode", StringArgumentType.word())
+                        .executes(ctx -> collect(ctx.getSource(), StringArgumentType.getString(ctx, "mode")))))
                 .then(Commands.literal("humor")
                     .then(Commands.argument("value", IntegerArgumentType.integer(0, 100))
                         .executes(ctx -> humor(ctx.getSource(), IntegerArgumentType.getInteger(ctx, "value")))))
@@ -80,22 +85,46 @@ public class TarsCommands {
         if (t.getOwnerUUID() == null) t.setOwnerUUID(p.getUUID());
         switch (kind) {
             case "follow" -> {
+                t.setMiningOrdered(false);
                 t.setFollowing(true); t.setSprintMode(false); t.clearGoToTarget(false);
                 t.speak(p, "Иду за вами.");
             }
             case "stay" -> {
+                t.setMiningOrdered(false);
                 t.setFollowing(false); t.setSprintMode(false); t.clearGoToTarget(false);
                 t.getNavigation().stop(); t.speak(p, "Стою.");
             }
             case "sprint" -> {
+                t.setMiningOrdered(false);
                 t.setFollowing(true); t.setSprintMode(true); t.clearGoToTarget(false);
                 t.speak(p, "Перекат.");
             }
             case "status" -> t.speak(p, "L" + t.getFlashLevel() + ". Юмор " + t.getHumor() + "%. "
                     + (t.isFollowing() ? "Следую." : "Стою.")
                     + (t.isSprintMode() ? " Перекат." : "")
-                    + (t.getGoToTarget() != null ? " Иду на точку." : ""));
+                    + " Склад: " + t.countItems() + " шт."
+                    + (t.isCollectDrops() ? " Сбор вкл." : " Сбор выкл."));
         }
+        return 1;
+    }
+
+    private static int give(CommandSourceStack src) {
+        if (!(src.getEntity() instanceof ServerPlayer p)) return 0;
+        TarsEntity t = nearest(p);
+        if (t == null) { src.sendFailure(Component.literal("TARS не найден рядом.")); return 0; }
+        int n = t.giveToPlayer(p, false);
+        if (n <= 0) t.speak(p, "Склад пуст.");
+        else t.speak(p, "Перенёс " + n + " шт.");
+        return 1;
+    }
+
+    private static int collect(CommandSourceStack src, String mode) {
+        if (!(src.getEntity() instanceof ServerPlayer p)) return 0;
+        TarsEntity t = nearest(p);
+        if (t == null) { src.sendFailure(Component.literal("TARS не найден рядом.")); return 0; }
+        boolean on = mode.equalsIgnoreCase("on") || mode.equalsIgnoreCase("true") || mode.equals("1");
+        t.setCollectDrops(on);
+        t.speak(p, "Сбор в склад: " + (on ? "вкл" : "выкл") + ".");
         return 1;
     }
 
