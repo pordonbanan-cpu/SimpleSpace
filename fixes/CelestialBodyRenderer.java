@@ -17,7 +17,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 3D-сферы планет в мировых координатах (не billboard).
+ * 3D-кубы планет в мировых координатах (не billboard).
+ * Раньше тут была UV-сфера (32x20 сегментов = 640 квадов на планету),
+ * теперь квадратная планета — всего 6 квадов и та же логика вращения/кэша.
  */
 public class CelestialBodyRenderer extends EntityRenderer<CelestialBodyEntity> {
 
@@ -28,11 +30,9 @@ public class CelestialBodyRenderer extends EntityRenderer<CelestialBodyEntity> {
     private static final ResourceLocation MOON =
             ResourceLocation.fromNamespaceAndPath("simplespace", "textures/entity/moon.png");
 
-    private static final int LON_SEGMENTS = 32;
-    private static final int LAT_SEGMENTS = 20;
     private static final float SELF_SPIN_DEG_PER_TICK = 0.04f;
 
-    private static List<Quad> SPHERE_MESH;
+    private static List<Quad> CUBE_MESH;
 
     public CelestialBodyRenderer(EntityRendererProvider.Context context) {
         super(context);
@@ -65,7 +65,7 @@ public class CelestialBodyRenderer extends EntityRenderer<CelestialBodyEntity> {
         Matrix4f mat = pose.last().pose();
         org.joml.Matrix3f normalMat = pose.last().normal();
 
-        for (Quad q : sphereMesh()) {
+        for (Quad q : cubeMesh()) {
             Vector3f n = new Vector3f(q.normal);
             normalMat.transform(n);
             n.normalize();
@@ -93,48 +93,60 @@ public class CelestialBodyRenderer extends EntityRenderer<CelestialBodyEntity> {
 
     private record Quad(Vector3f[] pos, Vector3f normal, float[] u, float[] v) {}
 
-    private static List<Quad> sphereMesh() {
-        if (SPHERE_MESH != null) return SPHERE_MESH;
+    /**
+     * 6 faces of a unit cube (half-extent 0.5, matching the old unit-sphere
+     * radius). Each face's 4 corners are wound counter-clockwise as seen
+     * from outside the cube, so the outward normal matches the winding —
+     * get this backwards on a face and that face renders invisible.
+     */
+    private static List<Quad> cubeMesh() {
+        if (CUBE_MESH != null) return CUBE_MESH;
 
+        float h = 0.5f;
         List<Quad> quads = new ArrayList<>();
-        for (int lat = 0; lat < LAT_SEGMENTS; lat++) {
-            double lat0 = Math.PI * (-0.5 + (double) lat / LAT_SEGMENTS);
-            double lat1 = Math.PI * (-0.5 + (double) (lat + 1) / LAT_SEGMENTS);
 
-            for (int lon = 0; lon < LON_SEGMENTS; lon++) {
-                double lon0 = 2 * Math.PI * (double) lon / LON_SEGMENTS;
-                double lon1 = 2 * Math.PI * (double) (lon + 1) / LON_SEGMENTS;
+        // +Y top
+        quads.add(face(
+                new Vector3f(-h, h, -h), new Vector3f(-h, h, h),
+                new Vector3f(h, h, h), new Vector3f(h, h, -h),
+                new Vector3f(0, 1, 0)));
+        // -Y bottom
+        quads.add(face(
+                new Vector3f(-h, -h, h), new Vector3f(-h, -h, -h),
+                new Vector3f(h, -h, -h), new Vector3f(h, -h, h),
+                new Vector3f(0, -1, 0)));
+        // +X east
+        quads.add(face(
+                new Vector3f(h, -h, -h), new Vector3f(h, h, -h),
+                new Vector3f(h, h, h), new Vector3f(h, -h, h),
+                new Vector3f(1, 0, 0)));
+        // -X west
+        quads.add(face(
+                new Vector3f(-h, -h, -h), new Vector3f(-h, -h, h),
+                new Vector3f(-h, h, h), new Vector3f(-h, h, -h),
+                new Vector3f(-1, 0, 0)));
+        // +Z south
+        quads.add(face(
+                new Vector3f(-h, -h, h), new Vector3f(h, -h, h),
+                new Vector3f(h, h, h), new Vector3f(-h, h, h),
+                new Vector3f(0, 0, 1)));
+        // -Z north
+        quads.add(face(
+                new Vector3f(h, -h, -h), new Vector3f(-h, -h, -h),
+                new Vector3f(-h, h, -h), new Vector3f(h, h, -h),
+                new Vector3f(0, 0, -1)));
 
-                Vector3f p00 = spherePoint(lat0, lon0);
-                Vector3f p01 = spherePoint(lat0, lon1);
-                Vector3f p11 = spherePoint(lat1, lon1);
-                Vector3f p10 = spherePoint(lat1, lon0);
-
-                float v0 = (float) lat / LAT_SEGMENTS;
-                float v1 = (float) (lat + 1) / LAT_SEGMENTS;
-                float u0 = (float) lon / LON_SEGMENTS;
-                float u1 = (float) (lon + 1) / LON_SEGMENTS;
-
-                Vector3f normal = new Vector3f(p00).add(p01).add(p11).add(p10).normalize();
-
-                quads.add(new Quad(
-                        new Vector3f[]{p00, p01, p11, p10},
-                        normal,
-                        new float[]{u0, u1, u1, u0},
-                        new float[]{v0, v0, v1, v1}
-                ));
-            }
-        }
-
-        SPHERE_MESH = quads;
+        CUBE_MESH = quads;
         return quads;
     }
 
-    private static Vector3f spherePoint(double lat, double lon) {
-        double cosLat = Math.cos(lat);
-        float x = (float) (cosLat * Math.cos(lon));
-        float y = (float) Math.sin(lat);
-        float z = (float) (cosLat * Math.sin(lon));
-        return new Vector3f(x, y, z).mul(0.5f);
+    private static Quad face(Vector3f p0, Vector3f p1, Vector3f p2, Vector3f p3, Vector3f normal) {
+        // Full texture stretched over each face - simplest possible UV mapping.
+        return new Quad(
+                new Vector3f[]{p0, p1, p2, p3},
+                normal,
+                new float[]{0f, 1f, 1f, 0f},
+                new float[]{1f, 1f, 0f, 0f}
+        );
     }
 }
