@@ -26,6 +26,7 @@ public class TarsFollowOwnerGoal extends Goal {
     public boolean canUse() {
         if (!tars.isFollowing()) return false;
         if (tars.getGoToTarget() != null) return false;
+        if (tars.isMiningOrdered()) return false;
         Player o = tars.getOwner();
         if (o == null || o.isSpectator() || !o.isAlive()) return false;
         this.owner = o;
@@ -35,7 +36,7 @@ public class TarsFollowOwnerGoal extends Goal {
 
     @Override
     public boolean canContinueToUse() {
-        if (!tars.isFollowing() || tars.getGoToTarget() != null) return false;
+        if (!tars.isFollowing() || tars.getGoToTarget() != null || tars.isMiningOrdered()) return false;
         if (owner == null || !owner.isAlive()) return false;
         float stop = tars.isSprintMode() ? 1.2f : stopDistance;
         return tars.distanceToSqr(owner) > (double) (stop * stop);

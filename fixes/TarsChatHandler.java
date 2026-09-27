@@ -26,7 +26,10 @@ public class TarsChatHandler {
                 || lower.startsWith("за мной") || lower.startsWith("стой")
                 || lower.startsWith("беги") || lower.startsWith("перекат")
                 || lower.startsWith("иди") || lower.contains("иди на")
-                || lower.contains("координат");
+                || lower.contains("координат")
+                || lower.contains("добудь") || lower.contains("добывай") || lower.contains("копай")
+                || lower.contains("где ближайш") || lower.contains("где руда") || lower.contains("где руды")
+                || lower.contains("найди руд") || lower.contains("хватит копать");
 
         if (!addressed) return;
 
