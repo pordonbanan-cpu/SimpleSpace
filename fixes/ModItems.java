@@ -16,6 +16,9 @@ public class ModItems {
     public static final DeferredRegister<CreativeModeTab> TABS =
             DeferredRegister.create(Registries.CREATIVE_MODE_TAB, SimpleSpace.MOD_ID);
 
+    public static final DeferredHolder<Item, Item> TARS_CORE =
+            ITEMS.register("tars_core", () -> new TarsCoreItem(new Item.Properties().stacksTo(1)));
+
     public static final DeferredHolder<Item, Item> FLASH_L1 =
             ITEMS.register("flash_l1", () -> new Item(new Item.Properties().stacksTo(16)));
     public static final DeferredHolder<Item, Item> FLASH_L2 =
@@ -26,8 +29,9 @@ public class ModItems {
     public static final DeferredHolder<CreativeModeTab, CreativeModeTab> TAB = TABS.register("main",
             () -> CreativeModeTab.builder()
                     .title(Component.literal("SimpleSpace"))
-                    .icon(() -> new ItemStack(FLASH_L1.get()))
+                    .icon(() -> new ItemStack(TARS_CORE.get()))
                     .displayItems((params, out) -> {
+                        out.accept(TARS_CORE.get());
                         out.accept(FLASH_L1.get());
                         out.accept(FLASH_L2.get());
                         out.accept(FLASH_L3.get());

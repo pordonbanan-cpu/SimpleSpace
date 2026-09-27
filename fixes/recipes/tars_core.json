@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "IRI",
+    "NON",
+    "IDI"
+  ],
+  "key": {
+    "I": { "item": "minecraft:iron_block" },
+    "R": { "item": "minecraft:redstone_block" },
+    "N": { "item": "minecraft:netherite_scrap" },
+    "O": { "item": "minecraft:observer" },
+    "D": { "item": "minecraft:diamond" }
+  },
+  "result": {
+    "id": "simplespace:tars_core",
+    "count": 1
+  }
+}

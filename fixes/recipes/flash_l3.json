@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    " N ",
+    "RFR",
+    " G "
+  ],
+  "key": {
+    "N": { "item": "minecraft:netherite_ingot" },
+    "R": { "item": "minecraft:redstone_block" },
+    "F": { "item": "simplespace:flash_l2" },
+    "G": { "item": "minecraft:gold_ingot" }
+  },
+  "result": {
+    "id": "simplespace:flash_l3",
+    "count": 1
+  }
+}
