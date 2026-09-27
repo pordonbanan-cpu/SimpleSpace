@@ -48,6 +48,7 @@ jobs:
           cp fixes/TarsEntity.java src/main/java/com/simplespace/tars/
           cp fixes/TarsFollowOwnerGoal.java src/main/java/com/simplespace/tars/
           cp fixes/TarsGoToGoal.java src/main/java/com/simplespace/tars/
+          cp fixes/TarsMineGoal.java src/main/java/com/simplespace/tars/
           cp fixes/TarsCommands.java src/main/java/com/simplespace/command/
           cp fixes/TarsMenuScreen.java src/main/java/com/simplespace/client/
           cp fixes/TarsFlashScreen.java src/main/java/com/simplespace/client/
@@ -170,7 +171,6 @@ jobs:
 
           write_png(sky/'milky_way.png', 256, 64, milky)
 
-          # Flash drive item icons 16x16
           item = Path('src/main/resources/assets/simplespace/textures/item')
           item.mkdir(parents=True, exist_ok=True)
           colors = {
@@ -180,10 +180,9 @@ jobs:
           }
           for name, (cr, cg, cb) in colors.items():
               def make(x, y, w, h, cr=cr, cg=cg, cb=cb):
-                  # USB stick shape
-                  if 5 <= x <= 10 and 1 <= y <= 4:  # metal tip
+                  if 5 <= x <= 10 and 1 <= y <= 4:
                       return 180, 180, 190, 255
-                  if 3 <= x <= 12 and 5 <= y <= 14:  # body
+                  if 3 <= x <= 12 and 5 <= y <= 14:
                       shade = 1.0 if (x + y) % 3 else 0.85
                       return int(cr*shade), int(cg*shade), int(cb*shade), 255
                   return 0, 0, 0, 0
