@@ -10,24 +10,31 @@ import net.minecraft.world.level.pathfinder.Path;
 import java.util.EnumSet;
 
 public class TarsMineGoal extends Goal {
+
     private final TarsEntity tars;
     private BlockPos target;
-    private int digCooldown, repathCooldown, noProgressTicks;
+    private int digCooldown;
+    private int repathCooldown;
+    private int noProgressTicks;
     private double lastDist = Double.MAX_VALUE;
 
     public TarsMineGoal(TarsEntity tars) {
         this.tars = tars;
-        setFlags(EnumSet.of(Flag.MOVE, Flag.LOOK));
+        this.setFlags(EnumSet.of(Flag.MOVE, Flag.LOOK));
     }
 
-    @Override public boolean canUse() {
-        if (tars.getFlashLevel() < 2 || !tars.isMiningOrdered()) return false;
+    @Override
+    public boolean canUse() {
+        if (tars.getFlashLevel() < 2) return false;
+        if (!tars.isMiningOrdered()) return false;
         target = tars.findNearestOre(tars.getMineOreFilter());
         return target != null;
     }
 
-    @Override public boolean canContinueToUse() {
-        if (!tars.isMiningOrdered() || tars.getFlashLevel() < 2 || target == null) return false;
+    @Override
+    public boolean canContinueToUse() {
+        if (!tars.isMiningOrdered() || tars.getFlashLevel() < 2) return false;
+        if (target == null) return false;
         if (tars.level().getBlockState(target).isAir()) {
             target = tars.findNearestOre(tars.getMineOreFilter());
             lastDist = Double.MAX_VALUE;
@@ -36,19 +43,24 @@ public class TarsMineGoal extends Goal {
         return true;
     }
 
-    @Override public void start() {
-        digCooldown = repathCooldown = noProgressTicks = 0;
+    @Override
+    public void start() {
+        digCooldown = 0;
+        repathCooldown = 0;
+        noProgressTicks = 0;
         lastDist = Double.MAX_VALUE;
         tars.setDigging(false);
     }
 
-    @Override public void stop() {
+    @Override
+    public void stop() {
         tars.setDigging(false);
         tars.getNavigation().stop();
         target = null;
     }
 
-    @Override public void tick() {
+    @Override
+    public void tick() {
         if (target == null) return;
         double dist = tars.distanceToSqr(target.getX() + 0.5, target.getY() + 0.5, target.getZ() + 0.5);
         tars.getLookControl().setLookAt(target.getX() + 0.5, target.getY() + 0.5, target.getZ() + 0.5);
@@ -60,14 +72,16 @@ public class TarsMineGoal extends Goal {
             tars.setDigging(true);
             if (--digCooldown <= 0) {
                 digCooldown = tars.getFlashLevel() >= 3 ? 7 : 11;
-                if (!tars.level().getBlockState(target).isAir()) tars.breakBlockForMine(target);
+                if (!tars.level().getBlockState(target).isAir()) {
+                    tars.breakBlockForMine(target);
+                }
                 target = tars.findNearestOre(tars.getMineOreFilter());
                 lastDist = Double.MAX_VALUE;
                 if (target == null) {
                     tars.setMiningOrdered(false);
                     tars.setDigging(false);
                     ServerPlayer sp = owner();
-                    if (sp != null) tars.speak(sp, "Готово. Склад: " + tars.countItems() + " шт.");
+                    if (sp != null) tars.speak(sp, "Готово. На складе: " + tars.countItems() + " шт.");
                 }
             }
             return;
@@ -95,9 +109,11 @@ public class TarsMineGoal extends Goal {
         int dx = Integer.signum(goal.getX() - base.getX());
         int dy = Integer.signum(goal.getY() - base.getY());
         int dz = Integer.signum(goal.getZ() - base.getZ());
-        for (BlockPos p : new BlockPos[]{
-                base.offset(dx, 0, dz), base.offset(dx, 1, dz), base.offset(dx, dy, dz),
-                base.offset(0, dy, 0), base.offset(dx, -1, dz), base.above(), goal}) {
+        BlockPos[] candidates = new BlockPos[] {
+            base.offset(dx, 0, dz), base.offset(dx, 1, dz), base.offset(dx, dy, dz),
+            base.offset(0, dy, 0), base.offset(dx, -1, dz), base.above(), goal
+        };
+        for (BlockPos p : candidates) {
             BlockState st = tars.level().getBlockState(p);
             if (st.isAir() || st.getDestroySpeed(tars.level(), p) < 0) continue;
             if (st.is(Blocks.BEDROCK) || st.is(Blocks.BARRIER)) continue;
