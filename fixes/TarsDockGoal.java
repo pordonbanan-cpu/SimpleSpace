@@ -2,13 +2,16 @@ package com.simplespace.tars;
 
 import com.simplespace.block.ModBlocks;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.goal.Goal;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.pathfinder.Path;
 import net.minecraft.world.phys.AABB;
-import net.neoforged.fml.ModList;
 
 import java.util.EnumSet;
 import java.util.List;
@@ -16,9 +19,8 @@ import java.util.UUID;
 
 /**
  * Стыковка:
- * 1) обычный блок-порт в мире;
- * 2) если порта нет (уже в Physics Assembler) — «мягкая» привязка
- *    к ближайшей сущности Sable/Simulated/Create Aeronautics.
+ * 1) блок-порт в обычном мире;
+ * 2) сущность только из Sable / Simulated / Aeronautics (не мобы!).
  */
 public class TarsDockGoal extends Goal {
 
@@ -27,6 +29,7 @@ public class TarsDockGoal extends Goal {
     private UUID physicsVehicleId;
     private int recalc;
     private int settleTicks;
+    private int failSpeakCd;
 
     public TarsDockGoal(TarsEntity tars) {
         this.tars = tars;
@@ -38,12 +41,21 @@ public class TarsDockGoal extends Goal {
         if (!tars.isDockOrdered()) return false;
         if (tars.isMiningOrdered()) return false;
         dock = findNearestDock();
-        if (dock != null) return true;
-        // Порт уже «физический» — ищем сущность-носитель
+        if (dock != null) {
+            physicsVehicleId = null;
+            return true;
+        }
         Entity phys = findNearestPhysicsEntity();
         if (phys != null) {
             physicsVehicleId = phys.getUUID();
             return true;
+        }
+        // Нечего стыковать — один раз сказать
+        if (--failSpeakCd <= 0) {
+            failSpeakCd = 80;
+            var o = tars.getOwner();
+            if (o instanceof ServerPlayer sp)
+                tars.speak(sp, "Порт не найден. Поставьте порт или соберите борт с портом рядом.");
         }
         return false;
     }
@@ -52,12 +64,11 @@ public class TarsDockGoal extends Goal {
     public boolean canContinueToUse() {
         if (!tars.isDockOrdered()) return false;
         if (dock != null) {
-            BlockState st = tars.level().getBlockState(dock);
-            return st.is(ModBlocks.TARS_DOCK.get());
+            return tars.level().getBlockState(dock).is(ModBlocks.TARS_DOCK.get());
         }
         if (physicsVehicleId != null) {
             Entity e = findEntityById(physicsVehicleId);
-            return e != null && e.isAlive();
+            return e != null && e.isAlive() && isPhysicsLike(e);
         }
         return false;
     }
@@ -118,16 +129,16 @@ public class TarsDockGoal extends Goal {
 
     private void tickPhysicsDock() {
         Entity vehicle = findEntityById(physicsVehicleId);
-        if (vehicle == null || !vehicle.isAlive()) {
+        if (vehicle == null || !vehicle.isAlive() || !isPhysicsLike(vehicle)) {
             physicsVehicleId = null;
             tars.setDocked(false);
             tars.setNoGravity(false);
+            if (tars.isPassenger()) tars.stopRiding();
             return;
         }
 
         double dist = tars.distanceToSqr(vehicle);
-        // Подойти ближе
-        if (dist > 9.0) {
+        if (dist > 16.0) {
             tars.setDocked(false);
             tars.setNoGravity(false);
             if (--recalc <= 0) {
@@ -138,18 +149,26 @@ public class TarsDockGoal extends Goal {
         }
 
         tars.getNavigation().stop();
-
-        // Пробуем сесть пассажиром (Create seat / vehicle entity)
+        // Не садимся на мобов — только tryRide на contraption-entity
         if (!tars.isPassenger()) {
-            boolean rode = tars.startRiding(vehicle, true);
+            boolean rode = false;
+            try {
+                rode = tars.startRiding(vehicle, true);
+            } catch (Exception ignored) {}
             if (!rode) {
-                // Мягкая привязка: копируем позицию/скорость носителя
                 softAttach(vehicle);
             } else {
                 tars.setDocked(true);
                 tars.setNoGravity(true);
             }
         } else {
+            // Если вдруг сели не на то — слезть
+            Entity v = tars.getVehicle();
+            if (v != null && !isPhysicsLike(v)) {
+                tars.stopRiding();
+                tars.setDocked(false);
+                return;
+            }
             tars.setDocked(true);
             tars.setNoGravity(true);
             tars.setDeltaMovement(0, 0, 0);
@@ -157,20 +176,16 @@ public class TarsDockGoal extends Goal {
 
         if (settleTicks++ == 5) {
             var o = tars.getOwner();
-            if (o instanceof net.minecraft.server.level.ServerPlayer sp)
-                tars.speak(sp, "Стыковка с физическим бортом. Готов к перелёту.");
+            if (o instanceof ServerPlayer sp)
+                tars.speak(sp, "Стыковка с физическим бортом.");
         }
     }
 
     private void softAttach(Entity vehicle) {
-        // Смещение «в порт» относительно носителя
-        double ox = vehicle.getX();
-        double oy = vehicle.getY() + 0.35;
-        double oz = vehicle.getZ();
         tars.setDocked(true);
         tars.setNoGravity(true);
         tars.setDeltaMovement(vehicle.getDeltaMovement());
-        tars.setPos(ox, oy, oz);
+        tars.setPos(vehicle.getX(), vehicle.getY() + 0.35, vehicle.getZ());
         tars.setYRot(vehicle.getYRot());
         tars.setYBodyRot(vehicle.getYRot());
         tars.setYHeadRot(vehicle.getYRot());
@@ -195,7 +210,7 @@ public class TarsDockGoal extends Goal {
         tars.setJumping(false);
         if (settleTicks++ == 5) {
             var o = tars.getOwner();
-            if (o instanceof net.minecraft.server.level.ServerPlayer sp)
+            if (o instanceof ServerPlayer sp)
                 tars.speak(sp, "В порту. Готов к отстою.");
         }
     }
@@ -222,13 +237,7 @@ public class TarsDockGoal extends Goal {
     }
 
     private Entity findNearestPhysicsEntity() {
-        if (!ModList.get().isLoaded("sable")
-                && !ModList.get().isLoaded("simulated")
-                && !ModList.get().isLoaded("aeronautics")
-                && !ModList.get().isLoaded("create_aeronautics")) {
-            // всё равно ищем крупные entity — вдруг другой id мода
-        }
-        AABB box = tars.getBoundingBox().inflate(16);
+        AABB box = tars.getBoundingBox().inflate(12);
         List<Entity> list = tars.level().getEntities(tars, box, this::isPhysicsLike);
         Entity best = null;
         double bestD = Double.MAX_VALUE;
@@ -242,26 +251,27 @@ public class TarsDockGoal extends Goal {
         return best;
     }
 
+    /** Только сущности физики Aeronautics/Sable — никогда мобы/игроки. */
     private boolean isPhysicsLike(Entity e) {
         if (e == null || !e.isAlive() || e == tars) return false;
-        if (e instanceof net.minecraft.world.entity.player.Player) return false;
+        if (e instanceof Player) return false;
+        if (e instanceof Mob) return false; // слизни, коровы и т.д. — нет
         if (e instanceof TarsEntity) return false;
-        ResourceLocation key = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(e.getType());
+
+        ResourceLocation key = BuiltInRegistries.ENTITY_TYPE.getKey(e.getType());
         if (key == null) return false;
         String ns = key.getNamespace();
         String path = key.getPath();
-        // Sable / Simulated / Aeronautics / Create contraption entities
-        if (ns.equals("sable") || ns.equals("simulated") || ns.equals("aeronautics")
-                || ns.equals("create_aeronautics") || ns.equals("create")) {
+
+        if (ns.equals("sable") || ns.equals("simulated")
+                || ns.equals("aeronautics") || ns.equals("create_aeronautics")) {
             return true;
         }
-        if (path.contains("contraption") || path.contains("sub_level")
-                || path.contains("physics") || path.contains("assembly")
-                || path.contains("seat")) {
+        if (ns.equals("create") && (path.contains("contraption") || path.contains("seat"))) {
             return true;
         }
-        // Крупные сущности рядом с портом — запасной вариант
-        return e.getBbWidth() >= 1.2 || e.getBbHeight() >= 1.2;
+        return path.contains("contraption") || path.contains("sub_level")
+                || path.contains("physics_body") || path.contains("assembly");
     }
 
     private Entity findEntityById(UUID id) {
