@@ -86,6 +86,10 @@ jobs:
           cp fixes/models/tars_dock_block.json src/main/resources/assets/simplespace/models/block/tars_dock.json
           printf '%s\n' '{' '  "parent": "simplespace:block/tars_dock"' '}' > src/main/resources/assets/simplespace/models/item/tars_dock.json
 
+          # Sable: TARS stays on physical Aeronautics ships
+          mkdir -p src/main/resources/data/sable/tags/entity_type
+          cp fixes/data/sable/tags/entity_type/retain_in_sub_level.json src/main/resources/data/sable/tags/entity_type/
+
           python3 -c "import base64,pathlib; pathlib.Path('src/main/resources/assets/simplespace/textures/entity/tars.png').write_bytes(base64.b64decode(pathlib.Path('fixes/tars.png.b64').read_text().strip()))"
 
           for id in flash_l1 flash_l2 flash_l3 flash_l4 flash_l5 tars_core tars_dock tars_manual; do
