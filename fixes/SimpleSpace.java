@@ -2,12 +2,8 @@ package com.simplespace;
 
 import com.simplespace.block.ModBlocks;
 import com.simplespace.block.entity.ModBlockEntities;
-import com.simplespace.command.SpaceCommands;
 import com.simplespace.command.TarsCommands;
 import com.simplespace.entity.ModEntities;
-import com.simplespace.event.SpacePhysicsHandler;
-import com.simplespace.event.SpacePlanetSpawner;
-import com.simplespace.event.SpaceTransitionHandler;
 import com.simplespace.item.ModItems;
 import com.simplespace.tars.TarsEntity;
 import net.neoforged.bus.api.IEventBus;
@@ -35,13 +31,9 @@ public class SimpleSpace {
         modEventBus.addListener(this::clientSetup);
         modEventBus.addListener(this::entityAttributes);
 
-        NeoForge.EVENT_BUS.register(new SpaceTransitionHandler());
-        NeoForge.EVENT_BUS.register(new SpacePlanetSpawner());
-        NeoForge.EVENT_BUS.register(new SpacePhysicsHandler());
-
         NeoForge.EVENT_BUS.addListener(this::onRegisterCommands);
 
-        LOGGER.info("SimpleSpace + TARS + SpaceLink loaded");
+        LOGGER.info("SimpleSpace + TARS loaded (no space dimension)");
     }
 
     private void entityAttributes(EntityAttributeCreationEvent event) {
@@ -49,7 +41,6 @@ public class SimpleSpace {
     }
 
     private void onRegisterCommands(RegisterCommandsEvent event) {
-        SpaceCommands.register(event.getDispatcher());
         TarsCommands.register(event.getDispatcher());
     }
 
