@@ -1,6 +1,7 @@
 package com.simplespace;
 
 import com.simplespace.block.ModBlocks;
+import com.simplespace.block.entity.ModBlockEntities;
 import com.simplespace.command.SpaceCommands;
 import com.simplespace.command.TarsCommands;
 import com.simplespace.entity.ModEntities;
@@ -26,6 +27,7 @@ public class SimpleSpace {
 
     public SimpleSpace(IEventBus modEventBus) {
         ModBlocks.register(modEventBus);
+        ModBlockEntities.register(modEventBus);
         ModEntities.register(modEventBus);
         ModItems.register(modEventBus);
 
@@ -39,7 +41,7 @@ public class SimpleSpace {
 
         NeoForge.EVENT_BUS.addListener(this::onRegisterCommands);
 
-        LOGGER.info("SimpleSpace + TARS loaded");
+        LOGGER.info("SimpleSpace + TARS + SpaceLink loaded");
     }
 
     private void entityAttributes(EntityAttributeCreationEvent event) {
