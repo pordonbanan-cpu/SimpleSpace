@@ -16,6 +16,10 @@ jobs:
           unzip -o "SimpleSpace-mod-source (1).zip"
           if [ -d SimpleSpace ]; then cp -r SimpleSpace/* .; fi
           chmod +x gradlew || true
+          # Remove broken space dimension datapack (causes registry crash)
+          rm -rf src/main/resources/data/simplespace/dimension_type
+          rm -rf src/main/resources/data/simplespace/dimension
+          rm -rf src/main/resources/data/simplespace/worldgen
 
       - name: Apply sources
         run: |
@@ -36,6 +40,7 @@ jobs:
           cp fixes/SpaceScannerBlock.java src/main/java/com/simplespace/block/
           cp fixes/GroundCommBlock.java src/main/java/com/simplespace/block/
           cp fixes/MonitorBlock.java src/main/java/com/simplespace/block/
+          cp fixes/AirlockDoorBlock.java src/main/java/com/simplespace/block/
           cp fixes/SpaceScannerBlockEntity.java src/main/java/com/simplespace/block/entity/
           cp fixes/GroundCommBlockEntity.java src/main/java/com/simplespace/block/entity/
           cp fixes/ModBlockEntities.java src/main/java/com/simplespace/block/entity/
@@ -87,7 +92,16 @@ jobs:
             python3 fixes/gen_tars_blocks.py simplespace /tmp/sspack
             cp -r /tmp/sspack/assets/simplespace/. src/main/resources/assets/simplespace/
           fi
+          if [ -f fixes/gen_airlock_hatch.py ]; then
+            python3 fixes/gen_airlock_hatch.py simplespace /tmp/hatch
+            cp -r /tmp/hatch/assets/simplespace/. src/main/resources/assets/simplespace/
+            if [ -d /tmp/hatch/data ]; then cp -r /tmp/hatch/data/. src/main/resources/data/; fi
+          fi
           python3 fixes/write_block_assets.py
+          # Ensure space dimension still gone after gens
+          rm -rf src/main/resources/data/simplespace/dimension_type
+          rm -rf src/main/resources/data/simplespace/dimension
+          rm -rf src/main/resources/data/simplespace/worldgen
 
       - uses: actions/setup-java@v4
         with:
