@@ -12,18 +12,29 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.tick.LevelTickEvent;
 
-/**
- * Планеты-кубы стоят у «якоря» измерения; каждый тик сдвигаем их
- * относительно виртуальной орбиты игрока (Cosmonautics-style).
- */
 public class SpacePlanetSpawner {
 
     private static boolean planetsSpawned = false;
 
     public static void ensurePlanets(ServerLevel spaceLevel) {
-        if (planetsSpawned) return;
+        if (planetsSpawned && countPlanets(spaceLevel) >= 3) return;
+        if (planetsSpawned) {
+            // кто-то despawn'нулся — пересоздать
+            for (Entity e : spaceLevel.getAllEntities()) {
+                if (e instanceof CelestialBodyEntity) e.discard();
+            }
+            planetsSpawned = false;
+        }
         spawnAll(spaceLevel);
         planetsSpawned = true;
+    }
+
+    private static int countPlanets(ServerLevel level) {
+        int n = 0;
+        for (Entity e : level.getAllEntities()) {
+            if (e instanceof CelestialBodyEntity) n++;
+        }
+        return n;
     }
 
     public static void forceRespawn(ServerLevel spaceLevel) {
@@ -32,14 +43,14 @@ public class SpacePlanetSpawner {
         }
         planetsSpawned = false;
         ensurePlanets(spaceLevel);
+        VirtualOrbitSystem.resetToEarthOrbit();
     }
 
     private static void spawnAll(ServerLevel level) {
-        // Якорные позиции — рядом с спавном; реальная «орбита» виртуальная
-        spawnPlanet(level, ModEntities.SUN.get(), 80, 40, 0);
-        spawnPlanet(level, ModEntities.EARTH.get(), 0, 0, 0);
-        spawnPlanet(level, ModEntities.MOON.get(), -40, 10, -20);
-        SimpleSpace.LOGGER.info("Spawned cube solar system (virtual orbit)");
+        spawnPlanet(level, ModEntities.SUN.get(), 100, 40, 0);
+        spawnPlanet(level, ModEntities.EARTH.get(), 0, 10, 0);
+        spawnPlanet(level, ModEntities.MOON.get(), -30, 15, -25);
+        SimpleSpace.LOGGER.info("Spawned cube solar system");
     }
 
     @SubscribeEvent
@@ -47,27 +58,21 @@ public class SpacePlanetSpawner {
         if (event.getTo() != ModDimensions.SPACE_LEVEL) return;
         if (!(event.getEntity().level() instanceof ServerLevel spaceLevel)) return;
         ensurePlanets(spaceLevel);
-        // Стартовая виртуальная орбита вокруг Солнца на уровне Земли
-        VirtualOrbitSystem.playerVirtualPos = new net.minecraft.world.phys.Vec3(
-                VirtualOrbitSystem.ORBIT_EARTH_SUN, 0, 0);
-        VirtualOrbitSystem.playerVirtualVel = new net.minecraft.world.phys.Vec3(
-                0, 0, VirtualOrbitSystem.circularSpeed(
-                        VirtualOrbitSystem.MU_SUN, VirtualOrbitSystem.ORBIT_EARTH_SUN));
+        VirtualOrbitSystem.resetToEarthOrbit();
     }
 
     @SubscribeEvent
     public void onSpaceTick(LevelTickEvent.Post event) {
         if (!(event.getLevel() instanceof ServerLevel level)) return;
         if (level.dimension() != ModDimensions.SPACE_LEVEL) return;
-        if (!planetsSpawned) return;
 
-        VirtualOrbitSystem.tick(0.05); // ~1/20 s
+        ensurePlanets(level);
+        VirtualOrbitSystem.tick(0.05);
 
         var players = level.players();
         if (players.isEmpty()) return;
         var player = players.get(0);
         double t = level.getGameTime() * 0.05;
-        double scale = 0.08;
 
         for (Entity e : level.getAllEntities()) {
             if (!(e instanceof CelestialBodyEntity body)) continue;
@@ -80,11 +85,12 @@ public class SpacePlanetSpawner {
             var target = VirtualOrbitSystem.renderOffset(
                     player.position(),
                     VirtualOrbitSystem.bodyVirtualPos(key, t),
-                    scale
+                    key
             );
             body.setPos(target.x, target.y, target.z);
             body.setDeltaMovement(0, 0, 0);
             body.setNoGravity(true);
+            body.setInvisible(false);
         }
     }
 
@@ -95,6 +101,7 @@ public class SpacePlanetSpawner {
             planet.moveTo(x, y, z, 0, 0);
             planet.setNoGravity(true);
             planet.setInvulnerable(true);
+            planet.setSilent(true);
             level.addFreshEntity(planet);
         }
     }
