@@ -131,42 +131,37 @@ jobs:
           out.mkdir(parents=True, exist_ok=True)
           SIZE = 128
 
-          def disc_mask(x, y, w, h):
-              cx, cy = (w-1)/2, (h-1)/2
-              d = math.sqrt((x-cx)**2 + (y-cy)**2) / (w/2)
-              if d > 1.0: return None
-              edge = max(0, min(1, (1.0 - d) * 8))
-              return d, edge
-
+          # Full-square textures for cube planet faces (no circular mask)
           def sun(x,y,w,h):
-              m = disc_mask(x,y,w,h)
-              if m is None: return 0,0,0,0
-              d, edge = m
-              heat = max(0, 1-d*0.9)
-              return 255, int(200+55*heat), int(60+80*heat), int(255*edge)
+              u, v = x/(w-1), y/(h-1)
+              heat = 0.7 + 0.3 * math.sin(u*9) * math.cos(v*7)
+              n = ((x*17) ^ (y*31) ^ ((x//4)*(y//4))) & 255
+              spark = 40 if n > 240 else 0
+              return min(255, int(255*heat)+spark), min(255, int(180+60*heat)+spark//2), int(40+50*heat), 255
 
           def earth(x,y,w,h):
-              m = disc_mask(x,y,w,h)
-              if m is None: return 0,0,0,0
-              d, edge = m
-              shade = 0.55 + 0.45 * max(0, 1-d)
-              v = y/h
+              u, v = x/(w-1), y/(h-1)
               hsh = ((x*13) ^ (y*7) ^ ((x//6)*(y//6)*19)) & 255
-              if v < 0.15 or v > 0.85: r,g,b = 230,230,245
-              elif hsh > 145: r,g,b = 50+hsh//10, 110+hsh//8, 45
-              else: r,g,b = 25, 70+hsh//12, 170+hsh//10
-              return int(r*shade), int(g*shade), int(b*shade), int(255*edge)
+              if v < 0.12 or v > 0.88:
+                  r,g,b = 235, 235, 245
+              elif hsh > 150:
+                  r,g,b = 45+hsh//12, 120+hsh//10, 40
+              else:
+                  r,g,b = 20, 70+hsh//14, 165+hsh//12
+              if ((int(u*32)+int(v*8)) % 7) == 0 and hsh > 100:
+                  r,g,b = min(255,r+40), min(255,g+40), min(255,b+40)
+              shade = 0.75 + 0.25 * math.sin(u*math.pi)
+              return int(r*shade), int(g*shade), int(b*shade), 255
 
           def moon(x,y,w,h):
-              m = disc_mask(x,y,w,h)
-              if m is None: return 0,0,0,0
-              d, edge = m
-              shade = 0.5 + 0.5 * max(0, 1-d)
               hsh = ((x*11) ^ (y*13) ^ ((x//5)*(y//5)*23)) & 255
-              base = 130 + (hsh % 50)
-              if hsh > 220: base = 80
-              c = int(base * shade)
-              return c, c, min(255,c+12), int(255*edge)
+              base = 140 + (hsh % 45)
+              for cx,cy,cr in [(30,40,12),(90,70,18),(50,100,10),(100,30,8)]:
+                  d = math.sqrt((x-cx)**2 + (y-cy)**2)
+                  if d < cr:
+                      base = int(base * (0.55 + 0.45*d/cr))
+              c = max(40, min(220, base))
+              return c, c, min(255, c+10), 255
 
           write_png(out/'sun.png', SIZE, SIZE, sun)
           write_png(out/'earth.png', SIZE, SIZE, earth)
