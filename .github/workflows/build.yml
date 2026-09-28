@@ -14,50 +14,53 @@ jobs:
       - name: Unpack sources
         run: |
           unzip -o "SimpleSpace-mod-source (1).zip"
-          if [ -d SimpleSpace ]; then
-            cp -r SimpleSpace/* .
-            cp -r SimpleSpace/.[!.]* . 2>/dev/null || true
-          fi
+          if [ -d SimpleSpace ]; then cp -r SimpleSpace/* .; fi
           chmod +x gradlew || true
 
       - name: Apply sources
         run: |
           cp fixes/build.gradle.geckolib build.gradle
           cp fixes/neoforge.mods.toml src/main/resources/META-INF/neoforge.mods.toml
+          mkdir -p src/main/java/com/simplespace/tars
+          mkdir -p src/main/java/com/simplespace/client
+          mkdir -p src/main/java/com/simplespace/command
+          mkdir -p src/main/java/com/simplespace/entity
+          mkdir -p src/main/java/com/simplespace/event
+          mkdir -p src/main/java/com/simplespace/dimension
+          mkdir -p src/main/java/com/simplespace/item
+          mkdir -p src/main/java/com/simplespace/block/entity
+          mkdir -p src/main/java/com/simplespace/space
 
-          mkdir -p src/main/java/com/simplespace/{tars,client,command,entity,event,dimension,item,block/entity,space}
-
-          cp fixes/VirtualOrbitSystem.java src/main/java/com/simplespace/space/ 2>/dev/null || true
           cp fixes/SpaceData.java src/main/java/com/simplespace/space/
+          cp fixes/VirtualOrbitSystem.java src/main/java/com/simplespace/space/ 2>/dev/null || true
           cp fixes/SpaceScannerBlock.java src/main/java/com/simplespace/block/
           cp fixes/GroundCommBlock.java src/main/java/com/simplespace/block/
           cp fixes/MonitorBlock.java src/main/java/com/simplespace/block/
           cp fixes/SpaceScannerBlockEntity.java src/main/java/com/simplespace/block/entity/
           cp fixes/GroundCommBlockEntity.java src/main/java/com/simplespace/block/entity/
           cp fixes/ModBlockEntities.java src/main/java/com/simplespace/block/entity/
+          cp fixes/ModBlocks.java src/main/java/com/simplespace/block/
+          cp fixes/TarsDockBlock.java src/main/java/com/simplespace/block/
+          cp fixes/SimpleSpace.java src/main/java/com/simplespace/
+          cp fixes/ModItems.java src/main/java/com/simplespace/item/
+          cp fixes/TarsCoreItem.java src/main/java/com/simplespace/item/
+          cp fixes/TarsManualItem.java src/main/java/com/simplespace/item/
+          cp fixes/ModEntities.java src/main/java/com/simplespace/entity/ 2>/dev/null || true
+          cp fixes/ModDimensions.java src/main/java/com/simplespace/dimension/ 2>/dev/null || true
+          cp fixes/ClientModEvents.java src/main/java/com/simplespace/client/
+          cp fixes/CelestialBodyRenderer.java src/main/java/com/simplespace/client/ 2>/dev/null || true
+          cp fixes/SpaceSkyRenderer.java src/main/java/com/simplespace/client/ 2>/dev/null || true
+          cp fixes/SpaceDimensionEffects.java src/main/java/com/simplespace/client/ 2>/dev/null || true
+          cp fixes/SpaceCommands.java src/main/java/com/simplespace/command/ 2>/dev/null || true
           cp fixes/SpacePhysicsHandler.java src/main/java/com/simplespace/event/ 2>/dev/null || true
           cp fixes/SpacePlanetSpawner.java src/main/java/com/simplespace/event/ 2>/dev/null || true
           cp fixes/SpaceTransitionHandler.java src/main/java/com/simplespace/event/ 2>/dev/null || true
           cp fixes/TarsChatHandler.java src/main/java/com/simplespace/event/
-          cp fixes/ModDimensions.java src/main/java/com/simplespace/dimension/ 2>/dev/null || true
-          cp fixes/CelestialBodyRenderer.java src/main/java/com/simplespace/client/ 2>/dev/null || true
-          cp fixes/SpaceDimensionEffects.java src/main/java/com/simplespace/client/ 2>/dev/null || true
-          cp fixes/SpaceSkyRenderer.java src/main/java/com/simplespace/client/ 2>/dev/null || true
-          cp fixes/ModEntities.java src/main/java/com/simplespace/entity/ 2>/dev/null || true
-          cp fixes/SimpleSpace.java src/main/java/com/simplespace/
-          cp fixes/ModItems.java src/main/java/com/simplespace/item/
-          cp fixes/ModBlocks.java src/main/java/com/simplespace/block/
-          cp fixes/TarsDockBlock.java src/main/java/com/simplespace/block/
-          cp fixes/TarsCoreItem.java src/main/java/com/simplespace/item/
-          cp fixes/TarsManualItem.java src/main/java/com/simplespace/item/
-          cp fixes/SpaceCommands.java src/main/java/com/simplespace/command/ 2>/dev/null || true
-          cp fixes/ClientModEvents.java src/main/java/com/simplespace/client/
 
           git show a1afa4f37ac0affad4a22c3124ad659d596fdc93:fixes/TarsEntity.java > src/main/java/com/simplespace/tars/TarsEntity.java
           python3 fixes/patch_warehouse.py src/main/java/com/simplespace/tars/TarsEntity.java
           python3 fixes/patch_tars_features.py src/main/java/com/simplespace/tars/TarsEntity.java
           python3 fixes/patch_dock_create.py src/main/java/com/simplespace/tars/TarsEntity.java
-
           cp fixes/TarsFollowOwnerGoal.java src/main/java/com/simplespace/tars/
           cp fixes/TarsGoToGoal.java src/main/java/com/simplespace/tars/
           cp fixes/TarsMineGoal.java src/main/java/com/simplespace/tars/
@@ -70,25 +73,31 @@ jobs:
           cp fixes/TarsGeoModel.java src/main/java/com/simplespace/client/
           cp fixes/TarsGeoRenderer.java src/main/java/com/simplespace/client/
 
-          mkdir -p src/main/resources/assets/simplespace/{geo/entity,animations/entity,textures/{entity,item,block,sky},models/{item,block},blockstates,lang}
+          mkdir -p src/main/resources/assets/simplespace/geo/entity
+          mkdir -p src/main/resources/assets/simplespace/animations/entity
+          mkdir -p src/main/resources/assets/simplespace/textures/entity
+          mkdir -p src/main/resources/assets/simplespace/textures/item
+          mkdir -p src/main/resources/assets/simplespace/textures/block
+          mkdir -p src/main/resources/assets/simplespace/models/item
+          mkdir -p src/main/resources/assets/simplespace/models/block
+          mkdir -p src/main/resources/assets/simplespace/blockstates
+          mkdir -p src/main/resources/assets/simplespace/lang
           mkdir -p src/main/resources/data/simplespace/recipe
           cp fixes/tars.geo.json src/main/resources/assets/simplespace/geo/entity/
           cp fixes/tars.animation.json src/main/resources/assets/simplespace/animations/entity/
-          cp fixes/recipes/*.json src/main/resources/data/simplespace/recipe/
-
-          printf '%s\n' '{' '  "variants": {' '    "": { "model": "simplespace:block/tars_dock" }' '  }' '}' > src/main/resources/assets/simplespace/blockstates/tars_dock.json
+          cp fixes/recipes/*.json src/main/resources/data/simplespace/recipe/ 2>/dev/null || true
           cp fixes/models/tars_dock_block.json src/main/resources/assets/simplespace/models/block/tars_dock.json
+          printf '%s\n' '{' '  "variants": { "": { "model": "simplespace:block/tars_dock" } }' '}' > src/main/resources/assets/simplespace/blockstates/tars_dock.json
 
           mkdir -p src/main/resources/data/sable/tags/entity_type
           cp fixes/data/sable/tags/entity_type/retain_in_sub_level.json src/main/resources/data/sable/tags/entity_type/
 
           python3 -c "import base64,pathlib; pathlib.Path('src/main/resources/assets/simplespace/textures/entity/tars.png').write_bytes(base64.b64decode(pathlib.Path('fixes/tars.png.b64').read_text().strip()))"
 
-          # Detailed models from generator if present
           if [ -f fixes/gen_tars_blocks.py ]; then
             python3 fixes/gen_tars_blocks.py simplespace /tmp/sspack
-            cp -r /tmp/sspack/assets/simplespace/* src/main/resources/assets/simplespace/
-            echo "Applied gen_tars_blocks assets"
+            cp -r /tmp/sspack/assets/simplespace/. src/main/resources/assets/simplespace/
+            echo gen_tars_blocks applied
           else
             for b in space_scanner ground_comm monitor; do
               printf '%s\n' '{' '  "variants": {' '    "facing=north": { "model": "simplespace:block/'
