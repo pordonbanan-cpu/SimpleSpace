@@ -17,25 +17,28 @@ public class ModEntities {
     public static final DeferredHolder<EntityType<?>, EntityType<CelestialBodyEntity>> SUN =
             ENTITIES.register("sun", () -> EntityType.Builder
                     .<CelestialBodyEntity>of(CelestialBodyEntity::new, MobCategory.MISC)
-                    .sized(100.0f, 100.0f)
-                    .clientTrackingRange(512)
-                    .updateInterval(Integer.MAX_VALUE)
+                    .sized(36.0f, 36.0f)
+                    .clientTrackingRange(1024)
+                    .updateInterval(5)
+                    .fireImmune()
                     .build("sun"));
 
     public static final DeferredHolder<EntityType<?>, EntityType<CelestialBodyEntity>> EARTH =
             ENTITIES.register("earth", () -> EntityType.Builder
                     .<CelestialBodyEntity>of(CelestialBodyEntity::new, MobCategory.MISC)
-                    .sized(48.0f, 48.0f)
-                    .clientTrackingRange(512)
-                    .updateInterval(Integer.MAX_VALUE)
+                    .sized(28.0f, 28.0f)
+                    .clientTrackingRange(1024)
+                    .updateInterval(5)
+                    .fireImmune()
                     .build("earth"));
 
     public static final DeferredHolder<EntityType<?>, EntityType<CelestialBodyEntity>> MOON =
             ENTITIES.register("moon", () -> EntityType.Builder
                     .<CelestialBodyEntity>of(CelestialBodyEntity::new, MobCategory.MISC)
-                    .sized(14.0f, 14.0f)
-                    .clientTrackingRange(512)
-                    .updateInterval(Integer.MAX_VALUE)
+                    .sized(10.0f, 10.0f)
+                    .clientTrackingRange(1024)
+                    .updateInterval(5)
+                    .fireImmune()
                     .build("moon"));
 
     public static final DeferredHolder<EntityType<?>, EntityType<TarsEntity>> TARS =
