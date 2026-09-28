@@ -14,33 +14,6 @@ public class ModEntities {
     public static final DeferredRegister<EntityType<?>> ENTITIES =
             DeferredRegister.create(Registries.ENTITY_TYPE, SimpleSpace.MOD_ID);
 
-    public static final DeferredHolder<EntityType<?>, EntityType<CelestialBodyEntity>> SUN =
-            ENTITIES.register("sun", () -> EntityType.Builder
-                    .<CelestialBodyEntity>of(CelestialBodyEntity::new, MobCategory.MISC)
-                    .sized(36.0f, 36.0f)
-                    .clientTrackingRange(1024)
-                    .updateInterval(5)
-                    .fireImmune()
-                    .build("sun"));
-
-    public static final DeferredHolder<EntityType<?>, EntityType<CelestialBodyEntity>> EARTH =
-            ENTITIES.register("earth", () -> EntityType.Builder
-                    .<CelestialBodyEntity>of(CelestialBodyEntity::new, MobCategory.MISC)
-                    .sized(28.0f, 28.0f)
-                    .clientTrackingRange(1024)
-                    .updateInterval(5)
-                    .fireImmune()
-                    .build("earth"));
-
-    public static final DeferredHolder<EntityType<?>, EntityType<CelestialBodyEntity>> MOON =
-            ENTITIES.register("moon", () -> EntityType.Builder
-                    .<CelestialBodyEntity>of(CelestialBodyEntity::new, MobCategory.MISC)
-                    .sized(10.0f, 10.0f)
-                    .clientTrackingRange(1024)
-                    .updateInterval(5)
-                    .fireImmune()
-                    .build("moon"));
-
     public static final DeferredHolder<EntityType<?>, EntityType<TarsEntity>> TARS =
             ENTITIES.register("tars", () -> EntityType.Builder
                     .<TarsEntity>of(TarsEntity::new, MobCategory.CREATURE)
