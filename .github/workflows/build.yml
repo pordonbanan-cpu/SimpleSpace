@@ -19,6 +19,7 @@ jobs:
 
       - name: Apply sources
         run: |
+          set -e
           cp fixes/build.gradle.geckolib build.gradle
           cp fixes/neoforge.mods.toml src/main/resources/META-INF/neoforge.mods.toml
           mkdir -p src/main/java/com/simplespace/tars
@@ -59,18 +60,20 @@ jobs:
           python3 fixes/patch_warehouse.py src/main/java/com/simplespace/tars/TarsEntity.java
           python3 fixes/patch_tars_features.py src/main/java/com/simplespace/tars/TarsEntity.java
           python3 fixes/patch_dock_create.py src/main/java/com/simplespace/tars/TarsEntity.java
-          cp fixes/TarsFollowOwnerGoal.java fixes/TarsGoToGoal.java fixes/TarsMineGoal.java fixes/TarsDockGoal.java fixes/TarsCreateBridge.java src/main/java/com/simplespace/tars/
+          cp fixes/TarsFollowOwnerGoal.java src/main/java/com/simplespace/tars/
+          cp fixes/TarsGoToGoal.java src/main/java/com/simplespace/tars/
+          cp fixes/TarsMineGoal.java src/main/java/com/simplespace/tars/
+          cp fixes/TarsDockGoal.java src/main/java/com/simplespace/tars/
+          cp fixes/TarsCreateBridge.java src/main/java/com/simplespace/tars/
           cp fixes/TarsCommands.java src/main/java/com/simplespace/command/
-          cp fixes/TarsMenuScreen.java fixes/TarsFlashScreen.java fixes/TarsMineScreen.java fixes/TarsGeoModel.java fixes/TarsGeoRenderer.java src/main/java/com/simplespace/client/
+          cp fixes/TarsMenuScreen.java src/main/java/com/simplespace/client/
+          cp fixes/TarsFlashScreen.java src/main/java/com/simplespace/client/
+          cp fixes/TarsMineScreen.java src/main/java/com/simplespace/client/
+          cp fixes/TarsGeoModel.java src/main/java/com/simplespace/client/
+          cp fixes/TarsGeoRenderer.java src/main/java/com/simplespace/client/
           mkdir -p src/main/resources/assets/simplespace/geo/entity
           mkdir -p src/main/resources/assets/simplespace/animations/entity
           mkdir -p src/main/resources/assets/simplespace/textures/entity
-          mkdir -p src/main/resources/assets/simplespace/textures/item
-          mkdir -p src/main/resources/assets/simplespace/textures/block
-          mkdir -p src/main/resources/assets/simplespace/models/item
-          mkdir -p src/main/resources/assets/simplespace/models/block
-          mkdir -p src/main/resources/assets/simplespace/blockstates
-          mkdir -p src/main/resources/assets/simplespace/lang
           mkdir -p src/main/resources/data/simplespace/recipe
           mkdir -p src/main/resources/data/sable/tags/entity_type
           cp fixes/tars.geo.json src/main/resources/assets/simplespace/geo/entity/
@@ -78,51 +81,17 @@ jobs:
           cp fixes/recipes/*.json src/main/resources/data/simplespace/recipe/ 2>/dev/null || true
           cp fixes/models/tars_dock_block.json src/main/resources/assets/simplespace/models/block/tars_dock.json
           cp fixes/data/sable/tags/entity_type/retain_in_sub_level.json src/main/resources/data/sable/tags/entity_type/
-          echo '{"variants":{"":{"model":"simplespace:block/tars_dock"}}}' > src/main/resources/assets/simplespace/blockstates/tars_dock.json
           python3 -c "import base64,pathlib; pathlib.Path('src/main/resources/assets/simplespace/textures/entity/tars.png').write_bytes(base64.b64decode(pathlib.Path('fixes/tars.png.b64').read_text().strip()))"
           if [ -f fixes/gen_tars_blocks.py ]; then
             python3 fixes/gen_tars_blocks.py simplespace /tmp/sspack
             cp -r /tmp/sspack/assets/simplespace/. src/main/resources/assets/simplespace/
-          else
-            for b in space_scanner ground_comm monitor; do
-              echo "{\"variants\":{\"facing=north\":{\"model\":\"simplespace:block/$b\"},\"facing=south\":{\"model\":\"simplespace:block/$b\",\"y\":180},\"facing=west\":{\"model\":\"simplespace:block/$b\",\"y\":270},\"facing=east\":{\"model\":\"simplespace:block/$b\",\"y\":90}}}" > src/main/resources/assets/simplespace/blockstates/$b.json
-              echo "{\"parent\":\"minecraft:block/cube_all\",\"textures\":{\"all\":\"simplespace:block/$b\"}}" > src/main/resources/assets/simplespace/models/block/$b.json
-              echo "{\"parent\":\"simplespace:block/$b\"}" > src/main/resources/assets/simplespace/models/item/$b.json
-            done
           fi
-          echo '{"block.simplespace.space_scanner":"Космический сенсор","item.simplespace.space_scanner":"Космический сенсор","block.simplespace.ground_comm":"Наземная станция связи","item.simplespace.ground_comm":"Наземная станция связи","block.simplespace.monitor":"Монитор","item.simplespace.monitor":"Монитор","block.simplespace.tars_dock":"Порт TARS","item.simplespace.tars_core":"Монолит TARS"}' > src/main/resources/assets/simplespace/lang/ru_ru.json
-          echo '{"block.simplespace.space_scanner":"Space Scanner","block.simplespace.ground_comm":"Ground Comm","block.simplespace.monitor":"Monitor"}' > src/main/resources/assets/simplespace/lang/en_us.json
-
-      - name: Generate textures
-        run: |
-          python3 -c "
-from pathlib import Path
-import struct,zlib
-def write_png(path,w,h,fn):
- raw=bytearray()
- for y in range(h):
-  raw.append(0)
-  for x in range(w):
-   raw+=bytes(fn(x,y,w,h))
- def chunk(t,d): return struct.pack('>I',len(d))+t+d+struct.pack('>I',zlib.crc32(t+d)&0xffffffff)
- Path(path).parent.mkdir(parents=True,exist_ok=True)
- Path(path).write_bytes(b'\x89PNG\r\n\x1a\n'+chunk(b'IHDR',struct.pack('>IIBBBBB',w,h,8,6,0,0,0))+chunk(b'IDAT',zlib.compress(bytes(raw),9))+chunk(b'IEND',b''))
-def metal(x,y,w,h):
- c=90+(x+y)%20; return (c,c+5,c+10,255)
-block=Path('src/main/resources/assets/simplespace/textures/block')
-item=Path('src/main/resources/assets/simplespace/textures/item')
-for n in ['space_scanner','ground_comm','monitor','scanner_body','scanner_front','scanner_base','scanner_dish','comm_casing','comm_panel','comm_screen','monitor_screen','monitor_frame','monitor_back']:
- p=block/f'{n}.png'
- if not p.exists(): write_png(p,16,16,metal)
-for n in ['space_scanner','ground_comm','monitor','tars_core','tars_manual','flash_l1','flash_l2','flash_l3','flash_l4','flash_l5','tars_dock']:
- write_png(item/f'{n}.png',16,16,metal)
-print('ok')
-"
+          python3 fixes/write_block_assets.py
 
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: "21"
 
       - name: Build
         run: |
