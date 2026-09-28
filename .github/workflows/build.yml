@@ -74,6 +74,7 @@ jobs:
           mkdir -p src/main/resources/assets/simplespace/geo/entity
           mkdir -p src/main/resources/assets/simplespace/animations/entity
           mkdir -p src/main/resources/assets/simplespace/textures/entity
+          mkdir -p src/main/resources/assets/simplespace/models/block
           mkdir -p src/main/resources/data/simplespace/recipe
           mkdir -p src/main/resources/data/sable/tags/entity_type
           cp fixes/tars.geo.json src/main/resources/assets/simplespace/geo/entity/
