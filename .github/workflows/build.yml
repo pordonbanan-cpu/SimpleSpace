@@ -20,26 +20,18 @@ jobs:
           fi
           chmod +x gradlew || true
 
-      - name: Apply GeckoLib build.gradle and TARS
+      - name: Apply sources
         run: |
           cp fixes/build.gradle.geckolib build.gradle
           cp fixes/neoforge.mods.toml src/main/resources/META-INF/neoforge.mods.toml
 
-          mkdir -p src/main/java/com/simplespace/tars
-          mkdir -p src/main/java/com/simplespace/client
-          mkdir -p src/main/java/com/simplespace/command
-          mkdir -p src/main/java/com/simplespace/entity
-          mkdir -p src/main/java/com/simplespace/event
-          mkdir -p src/main/java/com/simplespace/dimension
-          mkdir -p src/main/java/com/simplespace/item
-          mkdir -p src/main/java/com/simplespace/block
-          mkdir -p src/main/java/com/simplespace/block/entity
-          mkdir -p src/main/java/com/simplespace/space
+          mkdir -p src/main/java/com/simplespace/{tars,client,command,entity,event,dimension,item,block/entity,space}
 
-          cp fixes/VirtualOrbitSystem.java src/main/java/com/simplespace/space/
+          cp fixes/VirtualOrbitSystem.java src/main/java/com/simplespace/space/ 2>/dev/null || true
           cp fixes/SpaceData.java src/main/java/com/simplespace/space/
           cp fixes/SpaceScannerBlock.java src/main/java/com/simplespace/block/
           cp fixes/GroundCommBlock.java src/main/java/com/simplespace/block/
+          cp fixes/MonitorBlock.java src/main/java/com/simplespace/block/
           cp fixes/SpaceScannerBlockEntity.java src/main/java/com/simplespace/block/entity/
           cp fixes/GroundCommBlockEntity.java src/main/java/com/simplespace/block/entity/
           cp fixes/ModBlockEntities.java src/main/java/com/simplespace/block/entity/
@@ -78,164 +70,25 @@ jobs:
           cp fixes/TarsGeoModel.java src/main/java/com/simplespace/client/
           cp fixes/TarsGeoRenderer.java src/main/java/com/simplespace/client/
 
-          mkdir -p src/main/resources/assets/simplespace/geo/entity
-          mkdir -p src/main/resources/assets/simplespace/animations/entity
-          mkdir -p src/main/resources/assets/simplespace/textures/entity
-          mkdir -p src/main/resources/assets/simplespace/textures/item
-          mkdir -p src/main/resources/assets/simplespace/textures/block
-          mkdir -p src/main/resources/assets/simplespace/models/item
-          mkdir -p src/main/resources/assets/simplespace/lang
+          mkdir -p src/main/resources/assets/simplespace/{geo/entity,animations/entity,textures/{entity,item,block,sky},models/{item,block},blockstates,lang}
           mkdir -p src/main/resources/data/simplespace/recipe
           cp fixes/tars.geo.json src/main/resources/assets/simplespace/geo/entity/
           cp fixes/tars.animation.json src/main/resources/assets/simplespace/animations/entity/
           cp fixes/recipes/*.json src/main/resources/data/simplespace/recipe/
 
-          mkdir -p src/main/resources/assets/simplespace/blockstates
-          mkdir -p src/main/resources/assets/simplespace/models/block
           printf '%s\n' '{' '  "variants": {' '    "": { "model": "simplespace:block/tars_dock" }' '  }' '}' > src/main/resources/assets/simplespace/blockstates/tars_dock.json
           cp fixes/models/tars_dock_block.json src/main/resources/assets/simplespace/models/block/tars_dock.json
-
-          for b in space_scanner ground_comm; do
-            printf '%s\n' '{' '  "variants": {' "    \"\": { \"model\": \"simplespace:block/${b}\" }" '  }' '}' > "src/main/resources/assets/simplespace/blockstates/${b}.json"
-            printf '%s\n' '{' '  "parent": "minecraft:block/cube_all",' "  \"textures\": { \"all\": \"simplespace:block/${b}\" }" '}' > "src/main/resources/assets/simplespace/models/block/${b}.json"
-            printf '%s\n' '{' "  \"parent\": \"simplespace:block/${b}\"" '}' > "src/main/resources/assets/simplespace/models/item/${b}.json"
-          done
 
           mkdir -p src/main/resources/data/sable/tags/entity_type
           cp fixes/data/sable/tags/entity_type/retain_in_sub_level.json src/main/resources/data/sable/tags/entity_type/
 
           python3 -c "import base64,pathlib; pathlib.Path('src/main/resources/assets/simplespace/textures/entity/tars.png').write_bytes(base64.b64decode(pathlib.Path('fixes/tars.png.b64').read_text().strip()))"
 
-          for id in flash_l1 flash_l2 flash_l3 flash_l4 flash_l5 tars_core tars_dock tars_manual space_scanner ground_comm; do
-            printf '%s\n' "{" "  \"parent\": \"minecraft:item/generated\"," "  \"textures\": { \"layer0\": \"simplespace:item/${id}\" }" "}" > "src/main/resources/assets/simplespace/models/item/${id}.json"
-          done
-          printf '%s\n' '{' '  "parent": "simplespace:block/tars_dock"' '}' > src/main/resources/assets/simplespace/models/item/tars_dock.json
-          printf '%s\n' '{' '  "parent": "simplespace:block/space_scanner"' '}' > src/main/resources/assets/simplespace/models/item/space_scanner.json
-          printf '%s\n' '{' '  "parent": "simplespace:block/ground_comm"' '}' > src/main/resources/assets/simplespace/models/item/ground_comm.json
-
-          printf '%s\n' '{' '  "item.simplespace.tars_core": "Монолит TARS",' '  "item.simplespace.flash_l1": "Флешка TARS L1",' '  "item.simplespace.flash_l2": "Флешка TARS L2",' '  "item.simplespace.flash_l3": "Флешка TARS L3",' '  "item.simplespace.flash_l4": "Флешка TARS L4",' '  "item.simplespace.flash_l5": "Флешка TARS L5",' '  "item.simplespace.tars_dock": "Порт TARS",' '  "block.simplespace.tars_dock": "Порт TARS",' '  "item.simplespace.tars_manual": "Пособие TARS",' '  "block.simplespace.space_scanner": "Космический сенсор",' '  "item.simplespace.space_scanner": "Космический сенсор",' '  "block.simplespace.ground_comm": "Блок связи",' '  "item.simplespace.ground_comm": "Блок связи"' '}' > src/main/resources/assets/simplespace/lang/ru_ru.json
-          printf '%s\n' '{' '  "item.simplespace.tars_core": "TARS Monolith",' '  "item.simplespace.tars_dock": "TARS Port",' '  "block.simplespace.tars_dock": "TARS Port",' '  "item.simplespace.tars_manual": "TARS Manual",' '  "block.simplespace.space_scanner": "Space Scanner",' '  "item.simplespace.space_scanner": "Space Scanner",' '  "block.simplespace.ground_comm": "Ground Comm",' '  "item.simplespace.ground_comm": "Ground Comm"' '}' > src/main/resources/assets/simplespace/lang/en_us.json
-
-          mkdir -p src/main/resources/data/simplespace/dimension_type
-          mkdir -p src/main/resources/data/simplespace/dimension
-          mkdir -p src/main/resources/data/simplespace/worldgen/biome
-          cp fixes/space.json src/main/resources/data/simplespace/dimension_type/ 2>/dev/null || true
-          cp fixes/moon_type.json src/main/resources/data/simplespace/dimension_type/moon.json 2>/dev/null || true
-          cp fixes/moon_dim.json src/main/resources/data/simplespace/dimension/moon.json 2>/dev/null || true
-          cp fixes/moon_wastes.json src/main/resources/data/simplespace/worldgen/biome/moon_wastes.json 2>/dev/null || true
-
-      - name: Generate textures
-        run: |
-          python3 << 'PY'
-          from pathlib import Path
-          import struct, zlib, math
-
-          def write_png(path, w, h, rgba_func):
-              raw = bytearray()
-              for y in range(h):
-                  raw.append(0)
-                  for x in range(w):
-                      r,g,b,a = rgba_func(x, y, w, h)
-                      raw += bytes([r,g,b,a])
-              def chunk(tag, data):
-                  return struct.pack('>I', len(data)) + tag + data + struct.pack('>I', zlib.crc32(tag + data) & 0xffffffff)
-              ihdr = struct.pack('>IIBBBBB', w, h, 8, 6, 0, 0, 0)
-              data = b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', ihdr) + chunk(b'IDAT', zlib.compress(bytes(raw), 9)) + chunk(b'IEND', b'')
-              Path(path).write_bytes(data)
-
-          block = Path('src/main/resources/assets/simplespace/textures/block')
-          block.mkdir(parents=True, exist_ok=True)
-
-          def panel(x,y,w,h, base, accent):
-              edge = x==0 or y==0 or x==w-1 or y==h-1
-              if edge: return accent[0]//2, accent[1]//2, accent[2]//2, 255
-              if 4 <= x <= 11 and 4 <= y <= 11:
-                  return accent[0], accent[1], accent[2], 255
-              n = 1.0 if (x+y)%3 else 0.85
-              return int(base[0]*n), int(base[1]*n), int(base[2]*n), 255
-
-          def scanner(x,y,w,h):
-              return panel(x,y,w,h, (30,50,70), (40,200,220))
-          def ground(x,y,w,h):
-              return panel(x,y,w,h, (40,45,55), (80,140,255))
-
-          write_png(block/'space_scanner.png', 16, 16, scanner)
-          write_png(block/'ground_comm.png', 16, 16, ground)
-
-          item = Path('src/main/resources/assets/simplespace/textures/item')
-          item.mkdir(parents=True, exist_ok=True)
-          write_png(item/'space_scanner.png', 16, 16, scanner)
-          write_png(item/'ground_comm.png', 16, 16, ground)
-
-          out = Path('src/main/resources/assets/simplespace/textures/entity')
-          out.mkdir(parents=True, exist_ok=True)
-          SIZE = 128
-
-          def sun(x,y,w,h):
-              u, v = x/(w-1), y/(h-1)
-              heat = 0.7 + 0.3 * math.sin(u*9) * math.cos(v*7)
-              return min(255, int(255*heat)), min(255, int(180+60*heat)), int(40+50*heat), 255
-
-          def earth(x,y,w,h):
-              v = y/(h-1)
-              hsh = ((x*13) ^ (y*7)) & 255
-              if v < 0.12 or v > 0.88: r,g,b = 235,235,245
-              elif hsh > 150: r,g,b = 45,120,40
-              else: r,g,b = 20,70,165
-              return r,g,b,255
-
-          def moon(x,y,w,h):
-              hsh = ((x*11) ^ (y*13)) & 255
-              c = 140 + (hsh % 45)
-              return c,c,min(255,c+10),255
-
-          write_png(out/'sun.png', SIZE, SIZE, sun)
-          write_png(out/'earth.png', SIZE, SIZE, earth)
-          write_png(out/'moon.png', SIZE, SIZE, moon)
-
-          sky = Path('src/main/resources/assets/simplespace/textures/sky')
-          sky.mkdir(parents=True, exist_ok=True)
-          def milky(x, y, w, h):
-              v = y / max(1, h-1)
-              dist = abs(v - 0.5) * 2
-              base = max(0, 1 - dist ** 1.2)
-              a = int(40 + 160 * base)
-              return 190, 195, 230, a
-          write_png(sky/'milky_way.png', 256, 64, milky)
-
-          configs = {
-              'flash_l1': (40,120,200), 'flash_l2': (30,140,70), 'flash_l3': (160,120,30),
-              'flash_l4': (120,60,160), 'flash_l5': (80,80,90),
-          }
-          for name, col in configs.items():
-              def make(x,y,w,h,c=col):
-                  if 3 <= x <= 12 and 4 <= y <= 14:
-                      return c[0], c[1], c[2], 255
-                  return 0,0,0,0
-              write_png(item/f'{name}.png', 16, 16, make)
-
-          def core(x,y,w,h):
-              if 4 <= x <= 11 and 1 <= y <= 14: return 40,40,50,255
-              return 0,0,0,0
-          write_png(item/'tars_core.png', 16, 16, core)
-          def manual(x,y,w,h):
-              if 2 <= x <= 13 and 1 <= y <= 14: return 140,110,70,255
-              return 0,0,0,0
-          write_png(item/'tars_manual.png', 16, 16, manual)
-          print('textures ok')
-          PY
-
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '21'
-
-      - name: Build
-        run: |
-          chmod +x gradlew
-          ./gradlew build --no-daemon
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: simplespace-mod
-          path: build/libs/*.jar
+          # Detailed models from generator if present
+          if [ -f fixes/gen_tars_blocks.py ]; then
+            python3 fixes/gen_tars_blocks.py simplespace /tmp/sspack
+            cp -r /tmp/sspack/assets/simplespace/* src/main/resources/assets/simplespace/
+            echo "Applied gen_tars_blocks assets"
+          else
+            for b in space_scanner ground_comm monitor; do
+              printf '%s\n' '{' '  "variants": {' '    "facing=north": { "model": "simplespace:block/'
