@@ -34,12 +34,12 @@ public class ModItems {
 
     public static final DeferredHolder<Item, Item> TARS_DOCK =
             ITEMS.register("tars_dock", () -> new BlockItem(ModBlocks.TARS_DOCK.get(), new Item.Properties()));
-
     public static final DeferredHolder<Item, Item> SPACE_SCANNER =
             ITEMS.register("space_scanner", () -> new BlockItem(ModBlocks.SPACE_SCANNER.get(), new Item.Properties()));
-
     public static final DeferredHolder<Item, Item> GROUND_COMM =
             ITEMS.register("ground_comm", () -> new BlockItem(ModBlocks.GROUND_COMM.get(), new Item.Properties()));
+    public static final DeferredHolder<Item, Item> MONITOR =
+            ITEMS.register("monitor", () -> new BlockItem(ModBlocks.MONITOR.get(), new Item.Properties()));
 
     public static final DeferredHolder<Item, Item> TARS_MANUAL =
             ITEMS.register("tars_manual", () -> new TarsManualItem(new Item.Properties().stacksTo(1)));
@@ -59,6 +59,7 @@ public class ModItems {
                         out.accept(TARS_DOCK.get());
                         out.accept(SPACE_SCANNER.get());
                         out.accept(GROUND_COMM.get());
+                        out.accept(MONITOR.get());
                     })
                     .build());
 
