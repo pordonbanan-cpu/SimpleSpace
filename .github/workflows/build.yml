@@ -19,7 +19,6 @@ jobs:
           rm -rf src/main/resources/data/simplespace/dimension_type
           rm -rf src/main/resources/data/simplespace/dimension
           rm -rf src/main/resources/data/simplespace/worldgen
-          # Drop any leftover space entity/render classes from zip
           find src -name 'Celestial*.java' -delete 2>/dev/null || true
           find src -name 'Space*.java' -delete 2>/dev/null || true
           find src -name 'VirtualOrbit*.java' -delete 2>/dev/null || true
@@ -36,6 +35,8 @@ jobs:
           mkdir -p src/main/java/com/simplespace/event
           mkdir -p src/main/java/com/simplespace/item
           mkdir -p src/main/java/com/simplespace/block/entity
+          mkdir -p src/main/java/com/simplespace/space
+          cp fixes/SpaceData.java src/main/java/com/simplespace/space/
           cp fixes/SpaceScannerBlock.java src/main/java/com/simplespace/block/
           cp fixes/GroundCommBlock.java src/main/java/com/simplespace/block/
           cp fixes/MonitorBlock.java src/main/java/com/simplespace/block/
@@ -79,7 +80,6 @@ jobs:
           cp fixes/models/tars_dock_block.json src/main/resources/assets/simplespace/models/block/tars_dock.json
           cp fixes/data/sable/tags/entity_type/retain_in_sub_level.json src/main/resources/data/sable/tags/entity_type/
           python3 -c "import base64,pathlib; pathlib.Path('src/main/resources/assets/simplespace/textures/entity/tars.png').write_bytes(base64.b64decode(pathlib.Path('fixes/tars.png.b64').read_text().strip()))"
-          # Generators if user committed full scripts
           if [ -f fixes/gen_tars_blocks.py ] && grep -q 'scanner_body' fixes/gen_tars_blocks.py 2>/dev/null; then
             python3 fixes/gen_tars_blocks.py simplespace /tmp/sspack
             cp -r /tmp/sspack/assets/simplespace/. src/main/resources/assets/simplespace/
