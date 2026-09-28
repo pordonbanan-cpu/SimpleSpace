@@ -33,7 +33,9 @@ jobs:
           mkdir -p src/main/java/com/simplespace/dimension
           mkdir -p src/main/java/com/simplespace/item
           mkdir -p src/main/java/com/simplespace/block
+          mkdir -p src/main/java/com/simplespace/space
 
+          cp fixes/VirtualOrbitSystem.java src/main/java/com/simplespace/space/
           cp fixes/SpacePhysicsHandler.java src/main/java/com/simplespace/event/ 2>/dev/null || true
           cp fixes/SpacePlanetSpawner.java src/main/java/com/simplespace/event/ 2>/dev/null || true
           cp fixes/SpaceTransitionHandler.java src/main/java/com/simplespace/event/ 2>/dev/null || true
@@ -86,7 +88,6 @@ jobs:
           cp fixes/models/tars_dock_block.json src/main/resources/assets/simplespace/models/block/tars_dock.json
           printf '%s\n' '{' '  "parent": "simplespace:block/tars_dock"' '}' > src/main/resources/assets/simplespace/models/item/tars_dock.json
 
-          # Sable: TARS stays on physical Aeronautics ships
           mkdir -p src/main/resources/data/sable/tags/entity_type
           cp fixes/data/sable/tags/entity_type/retain_in_sub_level.json src/main/resources/data/sable/tags/entity_type/
 
