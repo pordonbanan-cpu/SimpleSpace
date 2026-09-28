@@ -3,7 +3,6 @@ package com.simplespace.block.entity;
 import com.simplespace.space.SpaceData;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
@@ -15,8 +14,6 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * Космический сенсор: раз в 20 тиков пишет телеметрию в {@link SpaceData}.
- * Если рядом Create Cosmonautics — позже можно подставить их API;
- * сейчас: координаты, биом, гравитация измерения, оценка орбиты по Y/скорости.
  */
 public class SpaceScannerBlockEntity extends BlockEntity {
 
@@ -39,7 +36,6 @@ public class SpaceScannerBlockEntity extends BlockEntity {
     private void scanAndWrite(ServerLevel level, BlockPos pos) {
         Vec3 at = Vec3.atCenterOf(pos);
 
-        // Биом
         Holder<Biome> biomeHolder = level.getBiome(pos);
         String biomeId = biomeHolder.unwrapKey()
                 .map(ResourceKey::location)
@@ -48,20 +44,16 @@ public class SpaceScannerBlockEntity extends BlockEntity {
 
         String dimId = level.dimension().location().toString();
 
-        // Гравитация: в space-подобных измерениях ниже
         float gravity = level.dimensionType().hasCeiling() ? 0.1f
                 : (isSpaceLike(dimId) ? 0.0f : 1.0f);
 
-        // Оценка «орбиты» без Cosmonautics: по высоте и «скорости» блока (0)
-        // Когда появится soft-API Cosmonautics — заменить на реальные apo/peri/i
         double y = at.y;
         double peri = Math.max(0, y - 40);
         double apo = y + 40;
         double incl = 0.0;
-        double velocity = estimateVelocity(level, pos);
+        double velocity = 0.0;
         String body = guessBody(dimId, y);
 
-        // Попытка soft-read Cosmonautics (рефлексия, не ломает билд без мода)
         CosmoSample cosmo = tryCosmonautics(level, pos);
         if (cosmo != null) {
             apo = cosmo.apo;
@@ -93,32 +85,17 @@ public class SpaceScannerBlockEntity extends BlockEntity {
         if (d.contains("moon")) return "moon";
         if (d.contains("mars")) return "mars";
         if (isSpaceLike(d)) return y > 200 ? "deep_space" : "orbit";
-        if (d.contains("overworld") || d.endsWith(":overworld")) return "earth";
+        if (d.contains("overworld")) return "earth";
         return "unknown";
     }
 
-    private static double estimateVelocity(ServerLevel level, BlockPos pos) {
-        // Без API корабля — 0; с Cosmonautics подставится
-        return 0.0;
-    }
-
-    /** Soft-hook: если класс Cosmonautics есть — можно расширить. */
-    @Nullable
     private static CosmoSample tryCosmonautics(ServerLevel level, BlockPos pos) {
-        try {
-            // Заглушка под будущий API: сейчас всегда null
-            // Пример: Class.forName("dev.devce.rocketnautics...")
-            return null;
-        } catch (Throwable t) {
-            return null;
-        }
+        // Soft-hook под API Cosmonautics — пока null, билд без зависимости
+        return null;
     }
 
     private static final class CosmoSample {
         double apo, peri, incl, vel, grav;
         String body;
     }
-
-    // annotation for nullable without depending on jetbrains in all envs
-    @interface Nullable {}
 }
