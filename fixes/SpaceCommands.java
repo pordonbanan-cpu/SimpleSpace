@@ -4,12 +4,14 @@ import com.mojang.brigadier.CommandDispatcher;
 import com.simplespace.dimension.ModDimensions;
 import com.simplespace.event.SpacePlanetSpawner;
 import com.simplespace.event.SpaceTransitionHandler;
+import com.simplespace.space.VirtualOrbitSystem;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.Vec3;
 
 public class SpaceCommands {
 
@@ -30,7 +32,12 @@ public class SpaceCommands {
                         180f, 5f);
                 SpacePlanetSpawner.ensurePlanets(space);
                 p.setNoGravity(true);
-                ctx.getSource().sendSuccess(() -> Component.literal("§bКосмос (рядом с Землёй)"), false);
+                VirtualOrbitSystem.playerVirtualPos = new Vec3(
+                        VirtualOrbitSystem.ORBIT_EARTH_SUN, 0, 0);
+                VirtualOrbitSystem.playerVirtualVel = new Vec3(
+                        0, 0, VirtualOrbitSystem.circularSpeed(
+                                VirtualOrbitSystem.MU_SUN, VirtualOrbitSystem.ORBIT_EARTH_SUN));
+                ctx.getSource().sendSuccess(() -> Component.literal("§bКосмос (виртуальная орбита Земли)"), false);
                 return 1;
             }));
 
@@ -68,11 +75,42 @@ public class SpaceCommands {
                 if (p.level() instanceof ServerLevel level
                         && level.dimension() == ModDimensions.SPACE_LEVEL) {
                     SpacePlanetSpawner.forceRespawn(level);
-                    ctx.getSource().sendSuccess(() -> Component.literal("§eПланеты пересозданы"), false);
+                    ctx.getSource().sendSuccess(() -> Component.literal("§eКубические планеты пересозданы"), false);
                     return 1;
                 }
                 ctx.getSource().sendFailure(Component.literal("Нужно быть в космосе"));
                 return 0;
             }));
+
+        // Виртуальная орбита: статус + простой манёвр
+        dispatcher.register(Commands.literal("orbit")
+            .requires(s -> s.hasPermission(0))
+            .executes(ctx -> {
+                Vec3 p = VirtualOrbitSystem.playerVirtualPos;
+                double spd = VirtualOrbitSystem.speed();
+                ctx.getSource().sendSuccess(() -> Component.literal(String.format(
+                        "§bОрбита: pos (%.0f, %.0f, %.0f)  v=%.1f  (виртуальная, корабль на месте)",
+                        p.x, p.y, p.z, spd)), false);
+                return 1;
+            })
+            .then(Commands.literal("prograde")
+                .executes(ctx -> {
+                    Vec3 v = VirtualOrbitSystem.playerVirtualVel;
+                    if (v.lengthSqr() < 1e-6) v = new Vec3(0, 0, 1);
+                    VirtualOrbitSystem.applyImpulse(v.normalize().scale(5.0));
+                    ctx.getSource().sendSuccess(() -> Component.literal(
+                            "§a+5 Δv prograde (виртуальный импульс)"), false);
+                    return 1;
+                }))
+            .then(Commands.literal("retrograde")
+                .executes(ctx -> {
+                    Vec3 v = VirtualOrbitSystem.playerVirtualVel;
+                    if (v.lengthSqr() < 1e-6) v = new Vec3(0, 0, 1);
+                    VirtualOrbitSystem.applyImpulse(v.normalize().scale(-5.0));
+                    ctx.getSource().sendSuccess(() -> Component.literal(
+                            "§e-5 Δv retrograde"), false);
+                    return 1;
+                }))
+        );
     }
 }
