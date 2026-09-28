@@ -22,17 +22,28 @@ public class ModBlocks {
 
     public static final DeferredBlock<Block> SPACE_SCANNER = BLOCKS.register("space_scanner",
             () -> new SpaceScannerBlock(BlockBehaviour.Properties.of()
-                    .mapColor(MapColor.COLOR_CYAN)
-                    .strength(2.5f, 6f)
+                    .mapColor(MapColor.METAL)
+                    .strength(3.0f, 6f)
                     .sound(SoundType.METAL)
+                    .requiresCorrectToolForDrops()
+                    .noOcclusion()
                     .lightLevel(s -> 7)));
 
     public static final DeferredBlock<Block> GROUND_COMM = BLOCKS.register("ground_comm",
             () -> new GroundCommBlock(BlockBehaviour.Properties.of()
-                    .mapColor(MapColor.COLOR_LIGHT_BLUE)
-                    .strength(2.5f, 6f)
+                    .mapColor(MapColor.METAL)
+                    .strength(3.0f, 6f)
                     .sound(SoundType.METAL)
+                    .requiresCorrectToolForDrops()
+                    .noOcclusion()
                     .lightLevel(s -> 5)));
+
+    public static final DeferredBlock<Block> MONITOR = BLOCKS.register("monitor",
+            () -> new MonitorBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.METAL)
+                    .strength(2.0f, 4f)
+                    .sound(SoundType.METAL)
+                    .noOcclusion()));
 
     public static void register(IEventBus bus) {
         BLOCKS.register(bus);
