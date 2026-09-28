@@ -45,6 +45,14 @@ public class ModBlocks {
                     .sound(SoundType.METAL)
                     .noOcclusion()));
 
+    public static final DeferredBlock<Block> AIRLOCK_DOOR = BLOCKS.register("airlock_door",
+            () -> new AirlockDoorBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.METAL)
+                    .strength(4.0f, 12f)
+                    .sound(SoundType.METAL)
+                    .requiresCorrectToolForDrops()
+                    .noOcclusion()));
+
     public static void register(IEventBus bus) {
         BLOCKS.register(bus);
     }
